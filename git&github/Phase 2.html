@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Simulator - Phase 2: Branch Ninja</title>
+
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        :root {
+            --bg-color: #050a05;
+            --panel-bg: #0a140a;
+            --text-color: #00ff00;
+            --border-color: #008800;
+            --highlight: #33ff33;
+            --branch-main: #00ffff;
+            --branch-feature: #ff00ff;
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom Scrollbars & Resizer (Freedom Cursor) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--highlight);
+        }
+
+        ::-webkit-resizer {
+            background-color: var(--highlight);
+            border: 2px solid var(--panel-bg);
+            border-radius: 50%;
+            cursor: nwse-resize;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px var(--text-color);
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .layout-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            flex: 1;
+            min-height: 0;
+            align-content: flex-start;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+            resize: both;
+        }
+
+        .panel h2 {
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            color: var(--highlight);
+        }
+
+        /* Left Panel */
+        .left-panel {
+            flex: 1 1 250px;
+            min-height: 300px;
+        }
+
+        .mission-desc {
+            line-height: 1.5;
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+        }
+
+        /* Center Panel - Canvas */
+        .center-panel {
+            flex: 3 1 400px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #020502;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            flex: 1 1 250px;
+            min-height: 300px;
+        }
+
+        .stat-box {
+            margin-bottom: 15px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background: #003300;
+            border: 1px solid var(--border-color);
+            height: 12px;
+            border-radius: 3px;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--text-color);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 8px var(--text-color);
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--highlight);
+        }
+
+        .branch-list {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .branch-list li {
+            padding: 5px;
+            margin-bottom: 5px;
+            border-left: 3px solid transparent;
+        }
+
+        .branch-list li.active {
+            border-left-color: var(--highlight);
+            background: rgba(0, 255, 0, 0.1);
+            font-weight: bold;
+        }
+
+        /* Bottom Panel - Terminal */
+        .bottom-panel {
+            flex: 1 1 100%;
+            min-height: 200px;
+            cursor: text;
+        }
+
+        #terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: var(--highlight);
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        #terminal-input {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            flex: 1;
+            outline: none;
+        }
+
+        .btn {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 10px var(--text-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .layout-container {
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            .center-panel {
+                min-height: 250px;
+            }
+
+            .bottom-panel {
+                min-height: 200px;
+            }
+
+            .phase-nav {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Phase Navigation Bar */
+        .phase-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        .phase-nav a,
+        .phase-nav .phase-current {
+            padding: 6px 14px;
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            color: #555;
+        }
+
+        .phase-nav a:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: var(--text-color);
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+        }
+
+        .phase-nav .phase-current {
+            background: var(--text-color);
+            color: var(--bg-color);
+            font-weight: bold;
+            box-shadow: 0 0 12px var(--text-color);
+        }
+
+        .phase-nav .phase-connector {
+            color: var(--border-color);
+            font-size: 1.1rem;
+            padding: 0 4px;
+            border: none;
+        }
+
+        .phase-nav a.phase-completed {
+            color: var(--text-color);
+            border-color: var(--text-color);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Phase Navigation -->
+    <nav class="phase-nav animate__animated animate__fadeInDown">
+        <a href="Git&Github-home.html" class="phase-completed">🏠 Home</a>
+        <span class="phase-connector">|</span>
+        <a href="Phase 1.html" class="phase-completed">← Phase 1: Terminal</a>
+        <span class="phase-connector">→</span>
+        <span class="phase-current">Phase 2: Branching</span>
+        <span class="phase-connector">→</span>
+        <a href="Phase 3.html">Phase 3: Remote</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 4.html">Phase 4: Conflicts</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 5.html">Phase 5: Open Source</a>
+        <span class="phase-connector">|</span>
+        <a href="#lms" class="phase-completed">📺 LMS Help</a>
+    </nav>
+
+    <header class="animate__animated animate__fadeInDown">
+        <h1>Git Dojo: Phase 2 - Branch Ninja</h1>
+    </header>
+
+    <div class="layout-container animate__animated animate__fadeIn">
+
+        <!-- Left: Mission Panel -->
+        <div class="panel left-panel">
+            <h2>Mission Objectives</h2>
+            <h3 id="mission-title" style="margin-bottom: 10px; color: var(--branch-main);">Level Title</h3>
+            <div id="mission-desc" class="mission-desc">Mission description goes here.</div>
+
+            <div style="margin-top: auto;">
+                <button class="btn" onclick="showHint()">Get Hint</button>
+            </div>
+        </div>
+
+        <!-- Center: Graph Visualization -->
+        <div class="panel center-panel" id="canvas-container">
+            <canvas id="git-graph"></canvas>
+        </div>
+
+        <!-- Right: Progress & Stats -->
+        <div class="panel right-panel">
+            <h2>Agent Status</h2>
+            <div class="stat-box">
+                <div>Level: <span id="ui-level" class="stat-value">1</span>/7</div>
+                <div style="margin-top: 5px;">XP: <span id="ui-xp" class="stat-value">0</span></div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="ui-progress"></div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 15px;">Repository State</h2>
+            <div style="margin-bottom: 5px; color: #aaa;">HEAD points to:</div>
+            <ul class="branch-list" id="ui-branches">
+                <!-- Injected via JS -->
+            </ul>
+
+            <div style="margin-top: auto;">
+                <button class="btn" style="border-color: #880000; color: #ff5555;" onclick="resetProgress()">Reset
+                    Progress</button>
+            </div>
+        </div>
+
+        <!-- Bottom: Terminal -->
+        <div class="panel bottom-panel" onclick="document.getElementById('terminal-input').focus()">
+            <h2>Terminal</h2>
+            <div id="terminal-output">
+                <div>[SYSTEM] Branch Ninja Simulator initialized.</div>
+                <div>[SYSTEM] Type commands to complete your missions.</div>
+                <br>
+            </div>
+            <div class="input-line">
+                <span class="prompt">ninja@dojo:~/repo$</span>
+                <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // --- AUDIO SYSTEM ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function playTypeSound() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(200 + Math.random() * 50, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05);
+
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // --- GAME DATA & LEVELS ---
+        let gameState = { level: 0, xp: 0 };
+
+        // Internal Git state simulation
+        let gitState = {
+            commits: [],
+            branches: {},
+            HEAD: 'main', // can point to branch name or commit id
+            generateHash: () => Math.random().toString(16).substr(2, 6)
+        };
+
+        const levels = [
+            {
+                title: "Create a Branch",
+                desc: "Branching allows you to diverge from the main line of development and continue to do work without messing with that main line.<br><br><b>Goal:</b> Create a new branch called <code>feature</code>.",
+                cmdRegex: /^git\s+branch\s+feature$/,
+                xpReward: 50,
+                hint: "Type 'git branch feature'",
+                explanation: "You created a new pointer named 'feature' at the current commit. HEAD is still pointing to 'main'."
+            },
+            {
+                title: "Switch to Feature Branch",
+                desc: "Now that the branch exists, you need to switch to it to start working on it.<br><br><b>Goal:</b> Checkout the <code>feature</code> branch.",
+                cmdRegex: /^git\s+(checkout|switch)\s+feature$/,
+                xpReward: 50,
+                hint: "Type 'git checkout feature' or 'git switch feature'",
+                explanation: "HEAD has moved and is now pointing to the 'feature' branch. Future commits will advance this branch."
+            },
+            {
+                title: "Commit on Feature Branch",
+                desc: "Let's simulate saving some work on our new branch.<br><br><b>Goal:</b> Make a commit.",
+                cmdRegex: /^git\s+commit\s+-m\s+["'].+["']$/,
+                xpReward: 100,
+                hint: "Type 'git commit -m \"Add new feature\"'",
+                explanation: "A new commit was created. Because HEAD points to 'feature', the 'feature' branch pointer advanced to this new commit."
+            },
+            {
+                title: "Fast Forward Merge",
+                desc: "Your feature is ready! We've automatically switched you back to the <code>main</code> branch. Notice the graph.<br><br><b>Goal:</b> Merge the <code>feature</code> branch into <code>main</code>.",
+                cmdRegex: /^git\s+merge\s+feature$/,
+                xpReward: 100,
+                hint: "Type 'git merge feature'",
+                explanation: "Because 'main' hadn't moved since 'feature' diverged, Git performed a 'Fast-Forward' merge by simply moving the 'main' pointer forward."
+            },
+            {
+                title: "Non Fast-Forward Merge",
+                desc: "We reset the timeline. This time, <code>main</code> has progressed while you were working on <code>feature</code>. They have diverged.<br><br><b>Goal:</b> You are on <code>main</code>. Merge <code>feature</code> into it.",
+                cmdRegex: /^git\s+merge\s+feature$/,
+                xpReward: 150,
+                hint: "Type 'git merge feature'",
+                explanation: "Git created a 'Merge Commit'. This special commit has two parents, tying the two histories together!"
+            },
+            {
+                title: "Rebase Feature Branch",
+                desc: "Let's try an alternative to merging. We reset the timeline again to a diverged state. We've placed you on the <code>feature</code> branch.<br><br><b>Goal:</b> Rebase <code>feature</code> onto <code>main</code>.",
+                cmdRegex: /^git\s+rebase\s+main$/,
+                xpReward: 150,
+                hint: "Type 'git rebase main'",
+                explanation: "Rebase rewrote the project history by taking the commits from 'feature' and applying them on top of 'main'. The history is now linear!"
+            },
+            {
+                title: "History Comparison",
+                desc: "You've seen both Merge and Rebase handling diverged branches.<br><br><b>Goal:</b> Answer the system prompt to prove your knowledge.",
+                cmdRegex: /.*/, // Handled specially
+                xpReward: 200,
+                hint: "Just type 'ready' to answer the question.",
+                explanation: "Apprenticeship Phase 2 Complete!"
+            }
+        ];
+
+        // --- GRAPHICS ENGINE (CANVAS) ---
+        const canvas = document.getElementById('git-graph');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawGraph();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const nodeRadius = 15;
+            const startX = 60;
+            const gapX = 80;
+            const mainY = canvas.height / 2 + 30;
+            const featureY = canvas.height / 2 - 40;
+
+            // Map branches to Y coords
+            const branchY = {
+                'main': mainY,
+                'feature': featureY
+            };
+
+            // Calculate node positions based on depth
+            let nodePositions = {};
+
+            gitState.commits.forEach(commit => {
+                let x = startX + (commit.depth * gapX);
+                let y = branchY[commit.branch] || mainY;
+                if (commit.isMerge) y = mainY; // Pull merge commits down to main
+
+                nodePositions[commit.id] = { x, y, commit };
+            });
+
+            // Draw Lines (Edges)
+            ctx.lineWidth = 3;
+            gitState.commits.forEach(commit => {
+                const currentPos = nodePositions[commit.id];
+                commit.parents.forEach(parentId => {
+                    const parentPos = nodePositions[parentId];
+                    if (parentPos) {
+                        ctx.beginPath();
+                        ctx.moveTo(parentPos.x, parentPos.y);
+
+                        // Bezier curve for branch crossing
+                        if (parentPos.y !== currentPos.y) {
+                            ctx.bezierCurveTo(
+                                parentPos.x + gapX / 2, parentPos.y,
+                                currentPos.x - gapX / 2, currentPos.y,
+                                currentPos.x, currentPos.y
+                            );
+                        } else {
+                            ctx.lineTo(currentPos.x, currentPos.y);
+                        }
+
+                        ctx.strokeStyle = commit.branch === 'main' || commit.isMerge ? '#00ffff' : '#ff00ff';
+                        ctx.stroke();
+                    }
+                });
+            });
+
+            // Draw Commits (Nodes)
+            Object.values(nodePositions).forEach(pos => {
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#050a05';
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = pos.commit.branch === 'main' || pos.commit.isMerge ? '#00ffff' : '#ff00ff';
+                ctx.stroke();
+
+                // Commit short hash
+                ctx.fillStyle = '#aaa';
+                ctx.font = '10px Courier New';
+                ctx.fillText(pos.commit.id, pos.x - 15, pos.y + 28);
+            });
+
+            // Draw Branch Labels and HEAD
+            Object.keys(gitState.branches).forEach(branchName => {
+                const targetCommitId = gitState.branches[branchName];
+                const pos = nodePositions[targetCommitId];
+                if (pos) {
+                    const isMain = branchName === 'main';
+                    const labelY = pos.y + (isMain ? -25 : -25);
+                    const color = isMain ? '#00ffff' : '#ff00ff';
+
+                    // Draw Branch Box
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.fillRect(pos.x - 20, labelY - 12, 50, 16);
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(pos.x - 20, labelY - 12, 50, 16);
+
+                    ctx.fillStyle = color;
+                    ctx.font = '12px Courier New';
+                    ctx.fillText(branchName, pos.x - 15, labelY);
+
+                    // Draw HEAD if it points here
+                    if (gitState.HEAD === branchName) {
+                        ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+                        ctx.fillRect(pos.x - 20, labelY - 30, 40, 14);
+                        ctx.fillStyle = '#000';
+                        ctx.fillText('HEAD', pos.x - 15, labelY - 20);
+
+                        // Line connecting HEAD to branch
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x, labelY - 16);
+                        ctx.lineTo(pos.x, labelY - 12);
+                        ctx.strokeStyle = 'yellow';
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
+
+        // --- STATE MANAGEMENT ---
+        function setupLevelState(levelIndex) {
+            // Reset to base
+            gitState.commits = [
+                { id: 'a1b2', msg: 'Init', depth: 0, parents: [], branch: 'main' },
+                { id: 'c3d4', msg: 'Setup', depth: 1, parents: ['a1b2'], branch: 'main' }
+            ];
+            gitState.branches = { 'main': 'c3d4' };
+            gitState.HEAD = 'main';
+
+            if (levelIndex === 1) { // Lvl 2: Branch exists
+                gitState.branches['feature'] = 'c3d4';
+            }
+            else if (levelIndex === 2) { // Lvl 3: Branch exists, HEAD on feature
+                gitState.branches['feature'] = 'c3d4';
+                gitState.HEAD = 'feature';
+            }
+            else if (levelIndex === 3) { // Lvl 4: Feature has commit, HEAD on main
+                gitState.commits.push({ id: 'f5e6', msg: 'Feat', depth: 2, parents: ['c3d4'], branch: 'feature' });
+                gitState.branches['feature'] = 'f5e6';
+                gitState.HEAD = 'main';
+            }
+            else if (levelIndex === 4) { // Lvl 5: Diverged
+                gitState.commits.push({ id: 'm7n8', msg: 'Main fix', depth: 2, parents: ['c3d4'], branch: 'main' });
+                gitState.branches['main'] = 'm7n8';
+
+                gitState.commits.push({ id: 'f5e6', msg: 'Feat', depth: 2, parents: ['c3d4'], branch: 'feature' });
+                gitState.branches['feature'] = 'f5e6';
+
+                gitState.HEAD = 'main';
+            }
+            else if (levelIndex === 5) { // Lvl 6: Diverged, HEAD on feature for rebase
+                gitState.commits.push({ id: 'm7n8', msg: 'Main fix', depth: 2, parents: ['c3d4'], branch: 'main' });
+                gitState.branches['main'] = 'm7n8';
+
+                gitState.commits.push({ id: 'f5e6', msg: 'Feat', depth: 2, parents: ['c3d4'], branch: 'feature' });
+                gitState.branches['feature'] = 'f5e6';
+
+                gitState.HEAD = 'feature';
+            }
+            else if (levelIndex === 6) { // Lvl 7: Free
+                // Setup clean rebased tree as visual
+                gitState.commits.push({ id: 'm7n8', msg: 'Main fix', depth: 2, parents: ['c3d4'], branch: 'main' });
+                gitState.branches['main'] = 'm7n8';
+
+                gitState.commits.push({ id: 'f5e6', msg: 'Feat', depth: 3, parents: ['m7n8'], branch: 'feature' });
+                gitState.branches['feature'] = 'f5e6';
+                gitState.HEAD = 'feature';
+            }
+
+            drawGraph();
+            updateUI();
+        }
+
+        function initGame() {
+            const savedState = localStorage.getItem('gitSimPhase2');
+            if (savedState) gameState = JSON.parse(savedState);
+            if (gameState.level >= levels.length) gameState.level = levels.length - 1;
+
+            resizeCanvas();
+            setupLevelState(gameState.level);
+        }
+
+        function updateUI() {
+            const lvl = levels[gameState.level];
+            document.getElementById('mission-title').innerText = lvl.title;
+            document.getElementById('mission-desc').innerHTML = lvl.desc;
+            document.getElementById('ui-level').innerText = gameState.level + 1;
+            document.getElementById('ui-xp').innerText = gameState.xp;
+            document.getElementById('ui-progress').style.width = `${((gameState.level) / levels.length) * 100}%`;
+
+            const ul = document.getElementById('ui-branches');
+            ul.innerHTML = '';
+            for (let branch in gitState.branches) {
+                const li = document.createElement('li');
+                li.innerText = branch;
+                if (gitState.HEAD === branch) li.classList.add('active');
+                ul.appendChild(li);
+            }
+        }
+
+        function printToTerminal(text, isCommand = false) {
+            const terminalOutput = document.getElementById('terminal-output');
+            const div = document.createElement('div');
+            if (isCommand) {
+                div.innerHTML = `<span class="prompt">ninja@dojo:~/repo$</span> ${text}`;
+            } else {
+                div.innerHTML = text; // allow html for formatting
+                div.style.color = "#aaaaaa";
+            }
+            terminalOutput.appendChild(div);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        // --- ACTION HANDLERS ---
+        function executeGitLogic(cmdStr) {
+            const lvlIndex = gameState.level;
+
+            // Level 1: Branch
+            if (lvlIndex === 0) {
+                gitState.branches['feature'] = gitState.branches['main'];
+            }
+            // Level 2: Checkout
+            else if (lvlIndex === 1) {
+                gitState.HEAD = 'feature';
+            }
+            // Level 3: Commit
+            else if (lvlIndex === 2) {
+                const headBranch = gitState.HEAD;
+                const parentId = gitState.branches[headBranch];
+                const parentDepth = gitState.commits.find(c => c.id === parentId).depth;
+                const newId = gitState.generateHash();
+
+                gitState.commits.push({
+                    id: newId, msg: 'New Commit', depth: parentDepth + 1, parents: [parentId], branch: headBranch
+                });
+                gitState.branches[headBranch] = newId;
+            }
+            // Level 4: Fast Forward Merge
+            else if (lvlIndex === 3) {
+                // main fast forwards to feature
+                gitState.branches['main'] = gitState.branches['feature'];
+            }
+            // Level 5: Merge Commit
+            else if (lvlIndex === 4) {
+                const mainId = gitState.branches['main'];
+                const featId = gitState.branches['feature'];
+                const parentDepth = gitState.commits.find(c => c.id === mainId).depth;
+                const newId = gitState.generateHash();
+
+                gitState.commits.push({
+                    id: newId, msg: 'Merge branch feature', depth: parentDepth + 1, parents: [mainId, featId], branch: 'main', isMerge: true
+                });
+                gitState.branches['main'] = newId;
+            }
+            // Level 6: Rebase
+            else if (lvlIndex === 5) {
+                const mainId = gitState.branches['main'];
+                const mainDepth = gitState.commits.find(c => c.id === mainId).depth;
+                const featCommit = gitState.commits.find(c => c.branch === 'feature' && c.id !== 'c3d4');
+
+                // Rewrite feature commit
+                featCommit.parents = [mainId];
+                featCommit.depth = mainDepth + 1;
+            }
+            // Level 7: Quiz trigger
+            else if (lvlIndex === 6) {
+                triggerFinalQuiz();
+                return;
+            }
+
+            drawGraph();
+        }
+
+        function triggerFinalQuiz() {
+            Swal.fire({
+                title: 'Final Question',
+                text: 'Which approach produces a cleaner, linear project history?',
+                icon: 'question',
+                input: 'radio',
+                inputOptions: {
+                    'merge': 'Git Merge',
+                    'rebase': 'Git Rebase'
+                },
+                inputValidator: (value) => {
+                    if (!value) return 'You need to choose something!';
+                    if (value !== 'rebase') return 'Incorrect! Look at the graph again. Rebase puts commits in a straight line.';
+                },
+                background: '#111',
+                color: '#0f0',
+                confirmButtonColor: '#008800'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    completeLevel(levels[6]);
+                }
+            });
+        }
+
+        function handleCommand(cmd) {
+            const trimmedCmd = cmd.trim();
+            if (!trimmedCmd) return;
+            printToTerminal(trimmedCmd, true);
+
+            if (trimmedCmd === "clear") {
+                document.getElementById('terminal-output').innerHTML = "";
+                return;
+            }
+
+            const currentLevelData = levels[gameState.level];
+
+            if (currentLevelData.cmdRegex.test(trimmedCmd) || gameState.level === 6) {
+                executeGitLogic(trimmedCmd);
+                if (gameState.level !== 6) completeLevel(currentLevelData);
+            } else {
+                printToTerminal(`[ERROR] Incorrect command for objective. Try using hints.`);
+                const termPanel = document.querySelector('.bottom-panel');
+                termPanel.classList.remove('animate__headShake');
+                void termPanel.offsetWidth;
+                termPanel.classList.add('animate__animated', 'animate__headShake');
+            }
+        }
+
+        function completeLevel(levelData) {
+            gameState.xp += levelData.xpReward;
+
+            Swal.fire({
+                title: 'System Authorized',
+                html: `<div style="text-align:left;">${levelData.explanation}</div>`,
+                icon: 'success',
+                background: '#111',
+                color: '#0f0',
+                confirmButtonColor: '#008800',
+                confirmButtonText: 'Next Scenario'
+            }).then(() => {
+                gameState.level++;
+                localStorage.setItem('gitSimPhase2', JSON.stringify(gameState));
+
+                if (gameState.level >= levels.length) {
+                    Swal.fire({
+                        title: 'Phase 2 Complete! 🎉',
+                        html: 'You are now a certified Branch Ninja!<br><br><b>Next up:</b> Learn about remote repositories and collaboration in Phase 3.',
+                        icon: 'success',
+                        background: '#111',
+                        color: '#0f0',
+                        showCancelButton: true,
+                        confirmButtonColor: '#008800',
+                        cancelButtonColor: '#333',
+                        confirmButtonText: 'Continue to Phase 3 →',
+                        cancelButtonText: 'Stay Here'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'Phase 3.html';
+                        }
+                    });
+                    gameState.level = levels.length - 1;
+                } else {
+                    setupLevelState(gameState.level);
+                    printToTerminal(`<br>--- LEVEL ${gameState.level + 1} ENGAGED ---`);
+                }
+                updateUI();
+            });
+        }
+
+        function showHint() {
+            Swal.fire({
+                title: 'Tactical Hint',
+                text: levels[gameState.level].hint,
+                icon: 'info',
+                background: '#111',
+                color: '#0f0',
+                confirmButtonColor: '#008800'
+            });
+        }
+
+        function resetProgress() {
+            Swal.fire({
+                title: 'Wipe Memory?',
+                text: "This will reset Phase 2 progress to zero.",
+                icon: 'warning',
+                showCancelButton: true,
+                background: '#111',
+                color: '#0f0',
+                confirmButtonColor: '#880000',
+                cancelButtonColor: '#333',
+                confirmButtonText: 'Execute'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem('gitSimPhase2');
+                    gameState = { level: 0, xp: 0 };
+                    document.getElementById('terminal-output').innerHTML = "Memory wiped. Ready to begin.<br>";
+                    initGame();
+                }
+            });
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('terminal-input').addEventListener('keydown', function (e) {
+            playTypeSound();
+            if (e.key === 'Enter') {
+                const cmd = this.value;
+                this.value = '';
+                handleCommand(cmd);
+            }
+        });
+
+        window.onload = initGame;
+    </script>
+</body>
+
+</html>

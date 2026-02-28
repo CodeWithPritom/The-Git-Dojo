@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Simulator - Phase 5: Open Source Legend</title>
+
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <!-- CodeMirror for Code Editing -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/darcula.min.css">
+    <!-- jsPDF for Certificate -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        :root {
+            /* GitHub Dark Theme Colors */
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --success-green: #238636;
+            --success-hover: #2ea043;
+            --danger-red: #f85149;
+            --warning-yellow: #d29922;
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom Scrollbars & Resizer (Freedom Cursor) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-blue);
+        }
+
+        ::-webkit-resizer {
+            background-color: var(--accent-blue);
+            border: 2px solid var(--panel-bg);
+            border-radius: 50%;
+            cursor: nwse-resize;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background: var(--accent-blue);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-val {
+            font-weight: bold;
+            color: var(--success-green);
+        }
+
+        .layout-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex: 1;
+            min-height: 0;
+            align-content: flex-start;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+            resize: both;
+        }
+
+        .panel-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            background: #0d1117;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            flex: 1 1 280px;
+            min-height: 300px;
+        }
+
+        .issue-card {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: var(--bg-color);
+        }
+
+        .issue-title {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+        }
+
+        .issue-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .issue-body {
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            background: rgba(210, 153, 34, 0.2);
+            color: var(--warning-yellow);
+            border: 1px solid var(--warning-yellow);
+        }
+
+        .guideline-list {
+            font-size: 0.85rem;
+            padding-left: 15px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Center Panel */
+        .center-panel {
+            flex: 3 1 400px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tabs {
+            display: flex;
+            background: #010409;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--text-main);
+            border-bottom-color: var(--accent-blue);
+            background: var(--panel-bg);
+        }
+
+        .view-pane {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            background: var(--bg-color);
+            position: relative;
+        }
+
+        .view-pane.active {
+            display: flex;
+        }
+
+        .CodeMirror {
+            flex: 1;
+            height: auto !important;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            flex: 1 1 280px;
+            min-height: 300px;
+        }
+
+        .btn {
+            background: var(--success-green);
+            color: #fff;
+            border: 1px solid rgba(240, 246, 252, 0.1);
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--success-hover);
+        }
+
+        .btn:disabled {
+            background: var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .pr-form {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .pr-form.active {
+            display: flex;
+        }
+
+        .input-text {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .input-text:focus {
+            border-color: var(--accent-blue);
+        }
+
+        textarea.input-text {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .review-card {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            background: var(--bg-color);
+            margin-top: 10px;
+            display: none;
+        }
+
+        .review-card.active {
+            display: block;
+        }
+
+        .review-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+        }
+
+        .review-body {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            border-left: 2px solid var(--warning-yellow);
+            padding-left: 10px;
+        }
+
+        /* Bottom Panel - Terminal */
+        .terminal-panel {
+            flex: 1 1 100%;
+            min-height: 200px;
+            cursor: text;
+            background: #010409;
+            font-family: var(--font-mono);
+        }
+
+        #terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            color: #b3b1ad;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: var(--success-green);
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        #terminal-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            flex: 1;
+            outline: none;
+        }
+
+        .mission-overlay {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 6px;
+            z-index: 10;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .mission-title {
+            color: var(--accent-blue);
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+
+        .mission-desc {
+            font-size: 0.8rem;
+            color: var(--text-main);
+        }
+
+        @media (max-width: 1000px) {
+            .layout-container {
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            .center-panel {
+                min-height: 300px;
+            }
+
+            .terminal-panel {
+                min-height: 250px;
+            }
+
+            .phase-nav {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Phase Navigation Bar */
+        .phase-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .phase-nav a,
+        .phase-nav .phase-current {
+            padding: 6px 14px;
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            color: var(--text-muted);
+        }
+
+        .phase-nav a:hover {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--text-main);
+            border-color: var(--accent-blue);
+        }
+
+        .phase-nav .phase-current {
+            background: var(--accent-blue);
+            color: #fff;
+            font-weight: bold;
+            border-color: var(--accent-blue);
+        }
+
+        .phase-nav .phase-connector {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            padding: 0 4px;
+            border: none;
+        }
+
+        .phase-nav a.phase-completed {
+            color: var(--success-green);
+            border-color: var(--success-green);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Phase Navigation -->
+    <nav class="phase-nav animate__animated animate__fadeInDown">
+        <a href="Git&Github-home.html" class="phase-completed">🏠 Home</a>
+        <span class="phase-connector">|</span>
+        <a href="Phase 1.html" class="phase-completed">← Phase 1: Terminal</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 2.html" class="phase-completed">Phase 2: Branching</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 3.html" class="phase-completed">Phase 3: Remote</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 4.html" class="phase-completed">Phase 4: Conflicts</a>
+        <span class="phase-connector">→</span>
+        <span class="phase-current">Phase 5: Open Source</span>
+        <span class="phase-connector">|</span>
+        <a href="#lms" class="phase-completed">📺 LMS Help</a>
+    </nav>
+
+    <header class="animate__animated animate__fadeInDown">
+        <h1>
+            <svg height="24" viewBox="0 0 16 16" version="1.1" width="24" fill="currentColor">
+                <path
+                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
+                </path>
+            </svg>
+            Git Dojo <span class="badge" id="ui-rank">Contributor</span>
+        </h1>
+        <div class="stats-container">
+            <div class="stat">Reputation: <span class="stat-val" id="ui-rep">0</span></div>
+            <div class="stat">XP: <span class="stat-val" id="ui-xp">0</span></div>
+            <button class="btn"
+                style="background: transparent; border: 1px solid var(--danger-red); color: var(--danger-red);"
+                onclick="resetGame()">Reset</button>
+        </div>
+    </header>
+
+    <div class="layout-container animate__animated animate__fadeIn">
+
+        <!-- Left Panel: Issues & Guide -->
+        <div class="panel left-panel">
+            <div class="panel-header">Repository Hub</div>
+            <div class="panel-content">
+                <div class="issue-card">
+                    <div class="issue-title">#42 Fix button alignment on mobile</div>
+                    <div class="issue-meta">opened 2 days ago by <span
+                            style="color: var(--accent-blue);">maintainer</span></div>
+                    <div class="tag">bug</div>
+                    <div class="tag">good first issue</div>
+                    <div class="issue-body" style="margin-top: 10px;">
+                        The primary action button is misaligned. In `src/styles.css`, the margin should be set to `10px`
+                        instead of `0`.
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px; font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;">Contribution
+                    Guidelines</div>
+                <ul class="guideline-list">
+                    <li>Fork the repository.</li>
+                    <li>Branch naming: <code>feature/issue-name</code> or <code>fix/issue-name</code>.</li>
+                    <li>Commit messages must follow Conventional Commits (e.g. <code>fix: short description</code>).
+                    </li>
+                    <li>Reference issue in PR (e.g. <code>Fixes #42</code>).</li>
+                    <li>Squash commits before merging if requested.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Center Panel: Editor & Graph -->
+        <div class="panel center-panel">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('editor', event)">&lt;&gt; Code</div>
+                <div class="tab" onclick="switchTab('graph', event)">Network Graph</div>
+            </div>
+
+            <div class="view-pane active" id="pane-editor">
+                <div
+                    style="background: #1e1e1e; padding: 5px 10px; font-family: var(--font-mono); font-size: 0.8rem; color: #888; border-bottom: 1px solid #333;">
+                    src/styles.css</div>
+                <textarea id="code-editor"></textarea>
+            </div>
+
+            <div class="view-pane" id="pane-graph">
+                <canvas id="git-graph"></canvas>
+            </div>
+
+            <!-- Floating Mission HUD -->
+            <div class="mission-overlay">
+                <div class="mission-title" id="hud-title">Loading Mission...</div>
+                <div class="mission-desc" id="hud-desc"></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: PR & Review -->
+        <div class="panel right-panel">
+            <div class="panel-header">Pull Requests</div>
+            <div class="panel-content">
+
+                <!-- Fork Button State -->
+                <div id="ui-fork-state" style="text-align: center; margin-top: 20px;">
+                    <div style="margin-bottom: 15px; font-size: 0.9rem; color: var(--text-muted);">You don't have write
+                        access to upstream. Fork to contribute.</div>
+                    <button class="btn" id="btn-fork" onclick="handleFork()">Fork Repository</button>
+                </div>
+
+                <!-- PR Form State -->
+                <div class="pr-form" id="ui-pr-state">
+                    <div style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;">Open a Pull Request</div>
+                    <input type="text" class="input-text" id="pr-title" placeholder="Title (e.g. fix: align button)">
+                    <textarea class="input-text" id="pr-desc"
+                        placeholder="Description (remember to reference the issue number)"></textarea>
+                    <button class="btn" id="btn-pr" onclick="handlePRSubmit()">Create Pull Request</button>
+                </div>
+
+                <!-- Review State -->
+                <div class="review-card" id="ui-review-state">
+                    <div class="review-header">
+                        <div class="avatar"></div>
+                        <span style="font-weight: bold; color: var(--text-main);">maintainer</span> left a review
+                    </div>
+                    <div class="review-body" id="review-text">
+                        Thanks for the PR! However, design team just updated the spec. Please change the margin to
+                        <code>15px</code> and squash your commits before we merge.
+                    </div>
+                </div>
+
+                <!-- Merge State -->
+                <div id="ui-merge-state" style="display: none; text-align: center; margin-top: 20px;">
+                    <div style="color: var(--success-green); margin-bottom: 10px; font-weight: bold;">Checks Passed
+                    </div>
+                    <button class="btn" style="background: #8957e5;" onclick="handleMerge()">Squash and Merge</button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Bottom Panel: Terminal -->
+        <div class="panel terminal-panel" onclick="document.getElementById('terminal-input').focus()">
+            <div class="panel-header" style="border-bottom: none; padding-bottom: 0;">Terminal</div>
+            <div id="terminal-output">
+                <div>Welcome to the Open Source Legend Simulator.</div>
+                <div>Awaiting input...</div><br>
+            </div>
+            <div class="input-line" style="padding: 0 15px 15px 15px;">
+                <span class="prompt" id="term-prompt">user@local:~$</span>
+                <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+
+    <script>
+        // --- AUDIO ENGINE ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+
+            if (type === 'type') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(300 + Math.random() * 50, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.01, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.03);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.03);
+            } else if (type === 'success') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        // --- EDITOR SETUP ---
+        const initialCode = `.button {\n    background-color: #58a6ff;\n    color: #ffffff;\n    border-radius: 4px;\n    padding: 8px 16px;\n    margin: 0; /* Needs fixing */\n}`;
+        const editor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
+            lineNumbers: true, mode: "css", theme: "darcula"
+        });
+        editor.setValue(initialCode);
+
+        // --- UI & TABS ---
+        function switchTab(tab, evt) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.view-pane').forEach(p => p.classList.remove('active'));
+            if (evt && evt.target) evt.target.classList.add('active');
+            document.getElementById(`pane-${tab}`).classList.add('active');
+            if (tab === 'editor') setTimeout(() => editor.refresh(), 50);
+            if (tab === 'graph') drawGraph();
+        }
+
+        // --- GAME ENGINE & STATE ---
+        let gameState = {
+            level: 0, xp: 0, rep: 0, hasForked: false, hasCloned: false,
+            branchName: '', commitScore: 0, prSubmitted: false, reviewAddressed: false
+        };
+
+        let gitState = {
+            upstream: [{ id: 'u1a2', msg: 'Initial commit' }],
+            origin: [], // user's fork
+            local: [],
+            head: 'main', currentDir: '~',
+            staged: false,
+            generateHash: () => Math.random().toString(16).substr(2, 6)
+        };
+
+        const levels = [
+            { title: "Fork the Repository", desc: "Click the 'Fork Repository' button in the PR panel to copy upstream to your account." },
+            {
+                title: "Clone Your Fork", desc: "Type `git clone https://github.com/user/OpenUI.git`",
+                cmd: /^git\s+clone\s+https:\/\/github\.com\/user\/OpenUI\.git$/
+            },
+            {
+                title: "Create Feature Branch", desc: "Type `git checkout -b feature/fix-button` (or similar convention).",
+                cmd: /^git\s+(checkout\s+-b|switch\s+-c)\s+(feature|fix)\/[a-zA-Z0-9-]+$/
+            },
+            {
+                title: "Fix Bug and Commit", desc: "Edit the CSS (set margin to 10px). Then type `git commit -am \"fix: ...\"` using Conventional Commits.",
+                cmd: /^git\s+commit\s+-a?m\s+["'](feat|fix|chore|style|refactor):\s+.+["']$/
+            },
+            {
+                title: "Push Branch", desc: "Push to your fork: `git push origin <your-branch>`",
+                cmd: /^git\s+push\s+(-u\s+)?origin\s+(feature|fix)\/[a-zA-Z0-9-]+$/
+            },
+            { title: "Open Pull Request", desc: "Use the PR Panel on the right to submit your changes. Reference #42 in the description." },
+            { title: "Address Review Feedback", desc: "Maintainer requested margin: 15px. Update code, then `git commit -am \"fix: ...\"` and `git push origin <your-branch>`." },
+            { title: "Squash Commits", desc: "Maintainer wants a clean history. Type `git rebase -i main` to squash locally, then `git push -f origin <your-branch>`." },
+            { title: "Merge Pull Request", desc: "Click 'Squash and Merge' in the PR panel to finalize the contribution." },
+            { title: "Open Source Legend", desc: "You completed the workflow! Generating certificate..." }
+        ];
+
+        // --- GRAPHICS (CANVAS) ---
+        const canvas = document.getElementById('git-graph');
+        const ctx = canvas.getContext('2d');
+        window.addEventListener('resize', () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; drawGraph(); });
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width, h = canvas.height, mid = w / 2;
+
+            // Dividers
+            ctx.strokeStyle = '#30363d'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(w / 3, 0); ctx.lineTo(w / 3, h); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(2 * w / 3, 0); ctx.lineTo(2 * w / 3, h); ctx.stroke();
+
+            ctx.fillStyle = '#8b949e'; ctx.font = '12px var(--font-main)';
+            ctx.fillText("Upstream", 20, 20);
+            ctx.fillText("Origin (Fork)", w / 3 + 20, 20);
+            ctx.fillText("Local Workstation", 2 * w / 3 + 20, 20);
+
+            const startY = 60, gapY = 50;
+
+            function drawLineNodes(arr, xBase, color, isLocal = false) {
+                if (!arr || arr.length === 0) return;
+                ctx.beginPath(); ctx.moveTo(xBase, startY); ctx.lineTo(xBase, startY + (arr.length - 1) * gapY); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+
+                arr.forEach((c, i) => {
+                    let cx = xBase;
+                    if (isLocal && c.branch !== 'main') {
+                        cx += 30; // indent branch
+                        if (i > 0 && arr[i - 1].branch === 'main') {
+                            ctx.beginPath(); ctx.moveTo(xBase, startY + (i - 1) * gapY); ctx.lineTo(cx, startY + i * gapY); ctx.strokeStyle = '#d29922'; ctx.stroke();
+                        } else if (i > 0) {
+                            ctx.beginPath(); ctx.moveTo(cx, startY + (i - 1) * gapY); ctx.lineTo(cx, startY + i * gapY); ctx.strokeStyle = '#d29922'; ctx.stroke();
+                        }
+                    }
+                    ctx.beginPath(); ctx.arc(cx, startY + i * gapY, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = '#161b22'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = (isLocal && c.branch !== 'main') ? '#d29922' : color; ctx.stroke();
+                    ctx.fillStyle = '#c9d1d9'; ctx.font = '10px var(--font-mono)'; ctx.fillText(c.id, cx + 15, startY + i * gapY + 4);
+                });
+            }
+
+            drawLineNodes(gitState.upstream, 40, '#8957e5');
+            drawLineNodes(gitState.origin, w / 3 + 40, '#58a6ff');
+            drawLineNodes(gitState.local, 2 * w / 3 + 40, '#238636', true);
+
+            // Draw HEAD
+            if (gitState.local.length > 0) {
+                const c = gitState.local[gitState.local.length - 1];
+                let cx = 2 * w / 3 + 40 + (c.branch !== 'main' ? 30 : 0);
+                let cy = startY + (gitState.local.length - 1) * gapY;
+                ctx.fillStyle = '#f85149'; ctx.fillRect(cx + 12, cy - 20, 40, 14);
+                ctx.fillStyle = '#fff'; ctx.fillText('HEAD', cx + 16, cy - 10);
+            }
+        }
+
+        // --- LOGIC HELPER ---
+        function printTerm(text, type = 'normal') {
+            const out = document.getElementById('terminal-output');
+            const div = document.createElement('div');
+            if (type === 'cmd') div.innerHTML = `<span class="prompt">${document.getElementById('term-prompt').innerText}</span> <span style="color:#fff">${text}</span>`;
+            else if (type === 'error') { div.innerHTML = text; div.style.color = 'var(--danger-red)'; }
+            else if (type === 'success') { div.innerHTML = text; div.style.color = 'var(--success-green)'; }
+            else div.innerHTML = text;
+            out.appendChild(div); out.scrollTop = out.scrollHeight;
+        }
+
+        function updateHUD() {
+            const l = levels[gameState.level];
+            document.getElementById('hud-title').innerText = `Mission ${gameState.level + 1}: ${l.title}`;
+            document.getElementById('hud-desc').innerHTML = l.desc;
+            document.getElementById('ui-xp').innerText = gameState.xp;
+            document.getElementById('ui-rep').innerText = gameState.rep;
+
+            let rank = "Contributor";
+            if (gameState.rep > 100) rank = "Core Dev";
+            if (gameState.rep > 250) rank = "Maintainer";
+            if (gameState.level >= 9) rank = "Legend";
+            document.getElementById('ui-rank').innerText = rank;
+
+            // UI states
+            document.getElementById('ui-fork-state').style.display = gameState.level === 0 ? 'block' : 'none';
+            document.getElementById('ui-pr-state').style.display = gameState.level === 5 ? 'flex' : 'none';
+            document.getElementById('ui-review-state').classList.toggle('active', gameState.level === 6 || gameState.level === 7);
+            if (gameState.level === 7) document.getElementById('review-text').innerHTML = "Looks good! Please squash your commits to keep the history clean. <code>git rebase -i main</code> then force push.";
+            document.getElementById('ui-merge-state').style.display = gameState.level === 8 ? 'block' : 'none';
+
+            if (gameState.hasCloned) document.getElementById('term-prompt').innerText = "user@local:~/OpenUI$";
+            else document.getElementById('term-prompt').innerText = "user@local:~$";
+
+            setTimeout(() => {
+                if (canvas.width === 0) { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
+                drawGraph();
+            }, 50);
+        }
+
+        function progressLevel() {
+            gameState.xp += 50; gameState.rep += 20;
+            playSound('success');
+
+            const l = levels[gameState.level];
+            Swal.fire({
+                title: 'Objective Complete', text: l.title, icon: 'success',
+                background: '#161b22', color: '#c9d1d9', confirmButtonColor: '#238636', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false
+            });
+
+            gameState.level++;
+            saveGame(); updateHUD();
+
+            if (gameState.level === 9) {
+                generateCertificate();
+            }
+        }
+
+        // --- BUTTON ACTIONS ---
+        function handleFork() {
+            if (gameState.level !== 0) return;
+            printTerm("Forking upstream repository to your account...", "normal");
+            setTimeout(() => {
+                gitState.origin = JSON.parse(JSON.stringify(gitState.upstream));
+                gameState.hasForked = true;
+                printTerm("Fork created successfully at https://github.com/user/OpenUI.git", "success");
+                progressLevel();
+            }, 800);
+        }
+
+        function handlePRSubmit() {
+            const title = document.getElementById('pr-title').value;
+            const desc = document.getElementById('pr-desc').value;
+            if (!title.includes('fix:') && !title.includes('feat:')) {
+                Swal.fire({ title: 'Wait', text: "Use conventional commit format for PR title (e.g., fix: ...)", icon: 'warning', background: '#161b22', color: '#fff' }); return;
+            }
+            if (!desc.includes('#42')) {
+                Swal.fire({ title: 'Wait', text: "Reference the issue number (#42) in the description.", icon: 'warning', background: '#161b22', color: '#fff' }); return;
+            }
+            gameState.rep += 30; // bonus for good PR
+            gameState.prSubmitted = true;
+            printTerm("Pull Request opened successfully.", "success");
+            progressLevel();
+        }
+
+        function handleMerge() {
+            if (gameState.level !== 8) return;
+            gitState.upstream.push({ id: gitState.generateHash(), branch: 'main', msg: 'Merge PR #43' });
+            printTerm("Pull request successfully merged and closed.", "success");
+            progressLevel();
+        }
+
+        // --- TERMINAL PARSER ---
+        function handleCommand(cmd) {
+            const trimmed = cmd.trim();
+            if (!trimmed) return;
+            printTerm(trimmed, 'cmd');
+            playSound('type');
+
+            if (trimmed === "clear") { document.getElementById('terminal-output').innerHTML = ""; return; }
+
+            const lvl = levels[gameState.level];
+
+            // Specific level parsing
+            if (gameState.level === 1 && lvl.cmd.test(trimmed)) {
+                gitState.local = JSON.parse(JSON.stringify(gitState.origin));
+                gitState.local.forEach(c => c.branch = 'main');
+                gameState.hasCloned = true;
+                printTerm("Cloning into 'OpenUI'...\nReceiving objects: 100%, done.", "success");
+                progressLevel();
+            }
+            else if (gameState.level === 2 && lvl.cmd.test(trimmed)) {
+                const match = trimmed.match(/(feature|fix)\/[a-zA-Z0-9-]+/);
+                gameState.branchName = match[0];
+                gitState.head = gameState.branchName;
+                printTerm(`Switched to a new branch '${gameState.branchName}'`, "success");
+                progressLevel();
+            }
+            else if (gameState.level === 3 && lvl.cmd.test(trimmed)) {
+                const code = editor.getValue();
+                if (!code.includes('margin: 10px')) {
+                    printTerm("You didn't fix the bug! Ensure margin is set to 10px in the editor.", "error"); return;
+                }
+                gitState.local.push({ id: gitState.generateHash(), branch: gitState.head, msg: 'fix' });
+                printTerm(`[${gitState.head}] 1 file changed, 1 insertion`, "success");
+                progressLevel();
+            }
+            else if (gameState.level === 4 && lvl.cmd.test(trimmed)) {
+                gitState.origin = JSON.parse(JSON.stringify(gitState.local));
+                printTerm(`To https://github.com/user/OpenUI.git\n * [new branch]      ${gitState.head} -> ${gitState.head}`, "success");
+                progressLevel();
+            }
+            else if (gameState.level === 6) { // Review Feedback
+                if (/^git\s+commit\s+-a?m\s+/.test(trimmed)) {
+                    const code = editor.getValue();
+                    if (!code.includes('margin: 15px')) { printTerm("Maintainer asked for 15px!", "error"); return; }
+                    gitState.local.push({ id: gitState.generateHash(), branch: gitState.head, msg: 'fix 2' });
+                    printTerm("Commit successful.");
+                } else if (/^git\s+push\s+origin/.test(trimmed)) {
+                    if (gitState.local.length <= gitState.origin.length) { printTerm("Nothing to push.", "error"); return; }
+                    gitState.origin = JSON.parse(JSON.stringify(gitState.local));
+                    printTerm("Changes pushed to PR.", "success");
+                    progressLevel();
+                } else {
+                    printTerm("Unrecognized command. Commit changes then push.", "error");
+                }
+            }
+            else if (gameState.level === 7) { // Squash
+                if (/^git\s+rebase\s+-i\s+main/.test(trimmed)) {
+                    // Simulate squash
+                    const base = gitState.local[0];
+                    const squashed = { id: gitState.generateHash(), branch: gitState.head, msg: 'squashed' };
+                    gitState.local = [base, squashed];
+                    printTerm("Interactive rebase successful. Commits squashed.", "success");
+                    drawGraph();
+                } else if (/^git\s+push\s+(-f|--force)\s+origin/.test(trimmed)) {
+                    if (gitState.local.length > 2) { printTerm("You didn't squash the commits yet!", "error"); return; }
+                    gitState.origin = JSON.parse(JSON.stringify(gitState.local));
+                    printTerm("Force push successful.", "success");
+                    progressLevel();
+                } else {
+                    printTerm("Use 'git rebase -i main' then 'git push -f origin <branch>'", "error");
+                }
+            }
+            else {
+                printTerm("Command not recognized or incorrect for current objective.", "error");
+                document.getElementById('terminal-input').parentElement.style.animation = "headShake 0.5s";
+                setTimeout(() => document.getElementById('terminal-input').parentElement.style.animation = "", 500);
+            }
+
+            updateHUD();
+        }
+
+        document.getElementById('terminal-input').addEventListener('keydown', e => {
+            playSound('type');
+            if (e.key === 'Enter') { const v = e.target.value; e.target.value = ''; handleCommand(v); }
+        });
+
+        // --- PDF CERTIFICATE GENERATION ---
+        function generateCertificate() {
+            Swal.fire({
+                title: '🏆 Open Source Legend!',
+                html: '<b>Congratulations!</b> You have completed the entire Git Dojo journey!<br><br>From basic terminal commands to open-source contributions — you\'ve mastered it all.<br><br>Your certificate is being generated...',
+                icon: 'success',
+                background: '#161b22', color: '#c9d1d9', confirmButtonColor: '#238636',
+                confirmButtonText: 'Download Certificate'
+            }).then(() => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape' });
+
+                // Design
+                doc.setFillColor(13, 17, 23); doc.rect(0, 0, 297, 210, 'F');
+                doc.setDrawColor(88, 166, 255); doc.setLineWidth(2); doc.rect(10, 10, 277, 190);
+
+                doc.setTextColor(201, 209, 217);
+                doc.setFont("courier", "bold"); doc.setFontSize(40);
+                doc.text("GIT DOJO CERTIFICATE", 148, 50, { align: "center" });
+
+                doc.setFont("helvetica", "normal"); doc.setFontSize(20);
+                doc.text("This certifies that you have achieved the rank of", 148, 80, { align: "center" });
+
+                doc.setTextColor(88, 166, 255); doc.setFontSize(35);
+                doc.text("OPEN SOURCE LEGEND", 148, 105, { align: "center" });
+
+                doc.setTextColor(201, 209, 217); doc.setFontSize(16);
+                doc.text(`Final XP: ${gameState.xp}  |  Reputation: ${gameState.rep}`, 148, 130, { align: "center" });
+
+                doc.setFontSize(12); doc.setTextColor(139, 148, 158);
+                doc.text("Issued by Git Learning Simulator - Phase 5", 148, 170, { align: "center" });
+
+                doc.save("Git_Legend_Certificate.pdf");
+            });
+        }
+
+        // --- SAVE/LOAD ---
+        function saveGame() { localStorage.setItem('gitSimPhase5', JSON.stringify(gameState)); localStorage.setItem('gitSimGraph5', JSON.stringify(gitState)); }
+        function loadGame() {
+            const sg = localStorage.getItem('gitSimPhase5'); const st = localStorage.getItem('gitSimGraph5');
+            if (sg && st) { gameState = JSON.parse(sg); gitState = JSON.parse(st); gitState.generateHash = () => Math.random().toString(16).substr(2, 6); }
+            if (gameState.level >= levels.length) gameState.level = levels.length - 1;
+            updateHUD();
+        }
+        function resetGame() {
+            localStorage.removeItem('gitSimPhase5'); localStorage.removeItem('gitSimGraph5');
+            location.reload();
+        }
+
+        window.onload = () => {
+            // Initialize canvas dimensions on first load
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            loadGame();
+        };
+    </script>
+</body>
+
+</html>

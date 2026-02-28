@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Simulator - Phase 4: Conflict Slayer</title>
+
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <!-- CodeMirror for Code Editing -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+
+    <style>
+        :root {
+            --bg-color: #030805;
+            --panel-bg: #071207;
+            --text-color: #00ff00;
+            --border-color: #008800;
+            --highlight: #33ff33;
+            --branch-main: #00ffff;
+            --branch-feat: #ff00ff;
+            --danger-color: #ff0033;
+            --warning-color: #ffaa00;
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom Scrollbars & Resizer (Freedom Cursor) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--danger-color);
+        }
+
+        ::-webkit-resizer {
+            background-color: var(--danger-color);
+            border: 2px solid var(--panel-bg);
+            border-radius: 50%;
+            cursor: nwse-resize;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+
+        /* Danger Mode Body Pulse */
+        body.danger-mode {
+            box-shadow: inset 0 0 50px var(--danger-color);
+            border: 2px solid var(--danger-color);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+
+        body.danger-mode header {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 15px var(--danger-color);
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 8px var(--text-color);
+        }
+
+        .meter-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 30%;
+        }
+
+        .progress-bar-container {
+            flex: 1;
+            background: #002200;
+            border: 1px solid var(--border-color);
+            height: 12px;
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--text-color);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 8px var(--text-color);
+        }
+
+        .danger-bar-container {
+            flex: 1;
+            background: #220000;
+            border: 1px solid #550000;
+            height: 12px;
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .danger-bar {
+            height: 100%;
+            background: var(--danger-color);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 8px var(--danger-color);
+        }
+
+        .layout-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex: 1;
+            min-height: 0;
+            align-content: flex-start;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+            resize: both;
+        }
+
+        body.danger-mode .panel {
+            border-color: #440000;
+        }
+
+        .panel h2 {
+            font-size: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            color: var(--highlight);
+            text-transform: uppercase;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            flex: 1 1 250px;
+            min-height: 300px;
+        }
+
+        .mission-box {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px dashed var(--border-color);
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .log-box {
+            flex: 1;
+            border: 1px solid #333;
+            background: #000;
+            padding: 5px;
+            font-size: 0.8rem;
+            overflow-y: auto;
+            color: #aaa;
+        }
+
+        /* Center Panel (Graph + Editor) */
+        .center-panel {
+            flex: 3 1 400px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 0;
+            background: #010301;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            min-height: 150px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .editor-container {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            border-top: 2px solid var(--danger-color);
+        }
+
+        .editor-container.active {
+            display: flex;
+        }
+
+        .editor-header {
+            background: #220000;
+            color: #ff5555;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-bottom: 1px solid var(--danger-color);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .CodeMirror {
+            flex: 1;
+            height: auto !important;
+            font-family: var(--font-main);
+            font-size: 0.95rem;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            flex: 1 1 250px;
+            min-height: 300px;
+        }
+
+        .info-group {
+            margin-bottom: 15px;
+        }
+
+        .info-label {
+            color: #888;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-weight: bold;
+            color: var(--highlight);
+            margin-bottom: 5px;
+        }
+
+        .list-box {
+            list-style: none;
+            font-size: 0.8rem;
+            border-left: 2px solid #333;
+            padding-left: 8px;
+            margin-top: 5px;
+        }
+
+        .list-box li {
+            margin-bottom: 4px;
+            padding: 2px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .reflog-action {
+            color: #888;
+        }
+
+        .reflog-hash {
+            color: var(--warning-color);
+            font-weight: bold;
+        }
+
+        /* Terminal */
+        .terminal-panel {
+            flex: 1 1 100%;
+            min-height: 200px;
+            cursor: text;
+        }
+
+        #terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: var(--highlight);
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        #terminal-input {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            flex: 1;
+            outline: none;
+        }
+
+        .btn {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .btn:hover {
+            background: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 10px var(--text-color);
+        }
+
+        .btn-danger {
+            border-color: #880000;
+            color: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-color);
+            color: white;
+            box-shadow: 0 0 10px var(--danger-color);
+        }
+
+        @media (max-width: 900px) {
+            .layout-container {
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            .center-panel {
+                min-height: 400px;
+            }
+
+            .terminal-panel {
+                min-height: 200px;
+            }
+
+            .phase-nav {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Phase Navigation Bar */
+        .phase-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        .phase-nav a,
+        .phase-nav .phase-current {
+            padding: 6px 14px;
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            color: #555;
+        }
+
+        .phase-nav a:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: var(--text-color);
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+        }
+
+        .phase-nav .phase-current {
+            background: var(--text-color);
+            color: var(--bg-color);
+            font-weight: bold;
+            box-shadow: 0 0 12px var(--text-color);
+        }
+
+        .phase-nav .phase-connector {
+            color: var(--border-color);
+            font-size: 1.1rem;
+            padding: 0 4px;
+            border: none;
+        }
+
+        .phase-nav a.phase-completed {
+            color: var(--text-color);
+            border-color: var(--text-color);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Phase Navigation -->
+    <nav class="phase-nav animate__animated animate__fadeInDown">
+        <a href="Git&Github-home.html" class="phase-completed">🏠 Home</a>
+        <span class="phase-connector">|</span>
+        <a href="Phase 1.html" class="phase-completed">← Phase 1: Terminal</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 2.html" class="phase-completed">Phase 2: Branching</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 3.html" class="phase-completed">Phase 3: Remote</a>
+        <span class="phase-connector">→</span>
+        <span class="phase-current">Phase 4: Conflicts</span>
+        <span class="phase-connector">→</span>
+        <a href="Phase 5.html">Phase 5: Open Source</a>
+        <span class="phase-connector">|</span>
+        <a href="#lms" class="phase-completed">📺 LMS Help</a>
+    </nav>
+
+    <header class="animate__animated animate__fadeInDown">
+        <h1>Git Dojo: Phase 4 - Conflict Slayer</h1>
+        <div class="meter-container">
+            <span style="font-size: 0.8rem;">XP: <span id="ui-xp"
+                    style="color: var(--highlight); font-weight: bold;">0</span></span>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="ui-progress"></div>
+            </div>
+        </div>
+        <div class="meter-container">
+            <span style="font-size: 0.8rem; color: var(--danger-color);">DANGER</span>
+            <div class="danger-bar-container">
+                <div class="danger-bar" id="ui-danger"></div>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout-container animate__animated animate__fadeIn">
+
+        <!-- Left: Mission & Logs -->
+        <div class="panel left-panel">
+            <h2>Objective</h2>
+            <div class="mission-box">
+                <h3 id="mission-title" style="margin-bottom: 5px; font-size: 1rem;">Level</h3>
+                <div id="mission-desc">Description</div>
+            </div>
+            <h2>Status Logs</h2>
+            <div class="log-box" id="ui-logs">
+                <div>[SYSTEM] Core initialized.</div>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="btn" onclick="showHint()">Get Hint</button>
+                <button class="btn btn-danger" onclick="resetProgress()">Reset Simulator</button>
+            </div>
+        </div>
+
+        <!-- Center: Graph & Editor -->
+        <div class="panel center-panel">
+            <div class="canvas-container" id="canvas-wrapper">
+                <canvas id="git-graph"></canvas>
+            </div>
+            <div class="editor-container" id="editor-wrapper">
+                <div class="editor-header">
+                    <span>FILE: src/main.js (CONFLICT)</span>
+                    <span class="animate__animated animate__flash animate__infinite">ACTION REQUIRED</span>
+                </div>
+                <textarea id="code-editor"></textarea>
+            </div>
+        </div>
+
+        <!-- Right: State & Tools -->
+        <div class="panel right-panel">
+            <h2>Git State</h2>
+            <div class="info-group">
+                <div class="info-label">HEAD Points To</div>
+                <div class="info-value" id="ui-head">main</div>
+                <div class="info-label">Working Directory</div>
+                <div class="info-value" id="ui-working" style="color: #aaa;">Clean</div>
+            </div>
+
+            <h2>Reflog <span style="font-size: 0.7rem; color: #888;">(HEAD history)</span></h2>
+            <ul class="list-box" id="ui-reflog"></ul>
+
+            <h2 style="margin-top: 15px;">Stash Stack</h2>
+            <ul class="list-box" id="ui-stash"></ul>
+        </div>
+
+        <!-- Terminal -->
+        <div class="panel terminal-panel" onclick="document.getElementById('terminal-input').focus()">
+            <h2 style="margin-bottom: 5px; border: none;">Terminal</h2>
+            <div id="terminal-output">
+                <div>[SYSTEM] Advanced Git Interface ready. Watch your step.</div><br>
+            </div>
+            <div class="input-line">
+                <span class="prompt" id="prompt-line">slayer@dojo:~/repo$</span>
+                <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+
+    <script>
+        // --- AUDIO ENGINE ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+
+            if (type === 'type') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.03);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.03);
+            } else if (type === 'danger') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'success') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        // --- EDITOR SETUP ---
+        const editor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
+            lineNumbers: true, mode: "javascript", theme: "monokai"
+        });
+
+        // --- GAME ENGINE & STATE ---
+        let gameState = { level: 0, step: 0, xp: 0 };
+
+        let gitState = {
+            commits: [], branches: {}, head: 'main', detached: false,
+            reflog: [], stash: [], workingStatus: 'Clean', danger: 0,
+            hasConflict: false
+        };
+
+        const conflictCode = `<<<<<<< HEAD
+console.log("Hello from main");
+=======
+console.log("Hello from feature");
+>>>>>>> feature`;
+
+        const levels = [
+            {
+                title: "Resolve Merge Conflict",
+                desc: "You and a teammate edited the same file. Merge `feature` into `main`, resolve the conflict in the editor, `git add src/main.js`, and `git commit`.",
+                setup: () => {
+                    gitState.commits = [
+                        { id: 'a1b2', x: 0, y: 0, branch: 'main' },
+                        { id: 'c3d4', x: 1, y: 0, branch: 'main' },
+                        { id: 'e5f6', x: 1, y: 1, branch: 'feat' } // diverged
+                    ];
+                    gitState.branches = { main: 'c3d4', feature: 'e5f6' };
+                    gitState.head = 'main'; gitState.detached = false;
+                },
+                steps: [
+                    {
+                        cmd: /^git\s+merge\s+feature$/, hint: "Type 'git merge feature'",
+                        action: () => {
+                            gitState.hasConflict = true;
+                            gitState.danger = 100;
+                            gitState.workingStatus = "unmerged";
+                            editor.setValue(conflictCode);
+                            document.getElementById('editor-wrapper').classList.add('active');
+                            document.body.classList.add('danger-mode');
+                            playSound('danger');
+                            log("[WARNING] CONFLICT (content): Merge conflict in src/main.js. Automatic merge failed.");
+                        }
+                    },
+                    {
+                        cmd: /^git\s+add\s+(src\/main\.js|\.)$/, hint: "Fix the code in the editor, removing the <<<< ==== >>>> markers, then type 'git add src/main.js'",
+                        action: () => {
+                            const code = editor.getValue();
+                            if (code.includes("<<<<<<<") || code.includes("=======") || code.includes(">>>>>>>")) {
+                                log("[ERROR] Conflict markers still present in file!");
+                                return false; // Block progression
+                            }
+                            gitState.workingStatus = "Staged Changes";
+                            gitState.hasConflict = false;
+                            log("Changes staged for commit. File marked as resolved.");
+                            return true;
+                        }
+                    },
+                    {
+                        cmd: /^git\s+commit$/, hint: "Type 'git commit' to finalize the merge.",
+                        action: () => {
+                            if (gitState.hasConflict) {
+                                log("[ERROR] Cannot commit: Unresolved conflicts.");
+                                return false;
+                            }
+                            gitState.danger = 0;
+                            document.getElementById('editor-wrapper').classList.remove('active');
+                            document.body.classList.remove('danger-mode');
+                            gitState.commits.push({ id: 'g7h8', x: 2, y: 0, branch: 'main', parents: ['c3d4', 'e5f6'] });
+                            gitState.branches.main = 'g7h8';
+                            gitState.workingStatus = "Clean";
+                            log("Merge successful.");
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Safe Undo (Revert)",
+                desc: "The last commit broke production! Safely undo it by creating a new inverse commit using `git revert HEAD`.",
+                setup: () => {
+                    gitState.commits = [{ id: 'a1b2', x: 0, y: 0 }, { id: 'x9x9', x: 1, y: 0 }]; // x9x9 is bad
+                    gitState.branches = { main: 'x9x9' }; gitState.head = 'main';
+                },
+                steps: [{
+                    cmd: /^git\s+revert\s+HEAD$/, hint: "Type 'git revert HEAD'",
+                    action: () => {
+                        gitState.commits.push({ id: 'r1v2', x: 2, y: 0 });
+                        gitState.branches.main = 'r1v2';
+                        log("[SUCCESS] Revert created. Bad commit remains in history, but its effects are undone.");
+                    }
+                }]
+            },
+            {
+                title: "Understanding Reset",
+                desc: "Observe how reset alters the branch pointer and working directory.<br>1: `git reset --soft HEAD~1`<br>2: `git reset --mixed HEAD~1`<br>3: `git reset --hard HEAD~1`",
+                setup: () => {
+                    gitState.commits = [{ id: 'c1c1', x: 0, y: 0 }, { id: 'c2c2', x: 1, y: 0 }, { id: 'c3c3', x: 2, y: 0 }, { id: 'c4c4', x: 3, y: 0 }];
+                    gitState.branches = { main: 'c4c4' }; gitState.head = 'main';
+                },
+                steps: [
+                    {
+                        cmd: /^git\s+reset\s+--soft\s+HEAD~1$/, hint: "Type 'git reset --soft HEAD~1'",
+                        action: () => { gitState.branches.main = 'c3c3'; gitState.workingStatus = "Staged Changes"; log("Soft Reset: Pointer moved, changes kept STAGED."); }
+                    },
+                    {
+                        cmd: /^git\s+reset\s+(--mixed\s+)?HEAD~1$/, hint: "Type 'git reset --mixed HEAD~1'",
+                        action: () => { gitState.branches.main = 'c2c2'; gitState.workingStatus = "Unstaged Changes"; log("Mixed Reset: Pointer moved, changes kept UNSTAGED."); }
+                    },
+                    {
+                        cmd: /^git\s+reset\s+--hard\s+HEAD~1$/, hint: "Type 'git reset --hard HEAD~1'",
+                        action: () => {
+                            gitState.branches.main = 'c1c1'; gitState.workingStatus = "Clean"; gitState.danger = 50;
+                            playSound('danger'); log("Hard Reset: Pointer moved, changes DESTROYED from working directory.");
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Reflog Recovery",
+                desc: "Oh no! You accidentally hard reset and lost commit `a9b8`. Look at the Reflog on the right, and type `git reset --hard a9b8` to recover it.",
+                setup: () => {
+                    gitState.commits = [{ id: 'c1', x: 0, y: 0 }, { id: 'a9b8', x: 1, y: 0 }];
+                    gitState.branches = { main: 'c1' }; gitState.head = 'main'; // It was reset
+                    gitState.reflog = [
+                        { hash: 'c1', action: 'reset: moving to HEAD~1' },
+                        { hash: 'a9b8', action: 'commit: vital feature' }
+                    ];
+                    gitState.danger = 80;
+                },
+                steps: [{
+                    cmd: /^git\s+reset\s+--hard\s+a9b8$/, hint: "Type 'git reset --hard a9b8'",
+                    action: () => {
+                        gitState.branches.main = 'a9b8'; gitState.danger = 0;
+                        log("Commit recovered using Reflog time-travel!");
+                    }
+                }]
+            },
+            {
+                title: "Stash Your Work",
+                desc: "You have uncommitted changes but need to switch branches urgently.<br>1: `git stash`<br>2: `git checkout feature`<br>3: `git stash pop`",
+                setup: () => {
+                    gitState.commits = [{ id: 'c1', x: 0, y: 0 }, { id: 'f1', x: 1, y: 1, branch: 'feature' }];
+                    gitState.branches = { main: 'c1', feature: 'f1' }; gitState.head = 'main';
+                    gitState.workingStatus = "Unstaged Changes";
+                },
+                steps: [
+                    { cmd: /^git\s+stash$/, hint: "Type 'git stash'", action: () => { gitState.workingStatus = "Clean"; gitState.stash.push("WIP on main"); log("Saved working directory to stash stack."); } },
+                    { cmd: /^git\s+(checkout|switch)\s+feature$/, hint: "Type 'git checkout feature'", action: () => { gitState.head = 'feature'; log("Switched to branch 'feature'."); } },
+                    { cmd: /^git\s+stash\s+pop$/, hint: "Type 'git stash pop'", action: () => { gitState.stash.pop(); gitState.workingStatus = "Unstaged Changes"; log("Restored changes from stash."); } }
+                ]
+            },
+            {
+                title: "Cherry Pick",
+                desc: "Branch `feature` has a commit `b5c6` you need on `main`. Apply it via `git cherry-pick b5c6`.",
+                setup: () => {
+                    gitState.commits = [{ id: 'm1', x: 0, y: 0 }, { id: 'b5c6', x: 1, y: 1, branch: 'feature' }];
+                    gitState.branches = { main: 'm1', feature: 'b5c6' }; gitState.head = 'main';
+                },
+                steps: [{
+                    cmd: /^git\s+cherry-pick\s+b5c6$/, hint: "Type 'git cherry-pick b5c6'",
+                    action: () => {
+                        gitState.commits.push({ id: 'c7d8', x: 1, y: 0 }); // new commit with same contents
+                        gitState.branches.main = 'c7d8';
+                        log("Cherry-pick applied. A copy of the commit was added to main.");
+                    }
+                }]
+            },
+            {
+                title: "Detached HEAD",
+                desc: "Checkout a specific commit `d4d4` instead of a branch. Then checkout `main` to return safely.<br>1: `git checkout d4d4`<br>2: `git checkout main`",
+                setup: () => {
+                    gitState.commits = [{ id: 'd4d4', x: 0, y: 0 }, { id: 'e5e5', x: 1, y: 0 }];
+                    gitState.branches = { main: 'e5e5' }; gitState.head = 'main';
+                },
+                steps: [
+                    {
+                        cmd: /^git\s+checkout\s+d4d4$/, hint: "Type 'git checkout d4d4'",
+                        action: () => { gitState.head = 'd4d4'; gitState.detached = true; gitState.danger = 50; playSound('danger'); log("[WARNING] You are in 'detached HEAD' state. Commits made here will be orphaned if you switch away."); }
+                    },
+                    {
+                        cmd: /^git\s+checkout\s+main$/, hint: "Type 'git checkout main'",
+                        action: () => { gitState.head = 'main'; gitState.detached = false; gitState.danger = 0; log("Safely reattached HEAD to main."); }
+                    }
+                ]
+            },
+            {
+                title: "Disaster Recovery Challenge",
+                desc: "The Ultimate Test! Your repo is in chaos — there's an active conflict, uncommitted work, and a lost commit. Combine everything you've learned.<br>1: `git stash` (save your work)<br>2: `git merge feature` (triggers conflict)<br>3: Fix the conflict in the editor, then `git add .`<br>4: `git commit` (resolve merge)<br>5: `git stash pop` (restore your work)",
+                setup: () => {
+                    gitState.commits = [
+                        { id: 'r1r1', x: 0, y: 0, branch: 'main' },
+                        { id: 'r2r2', x: 1, y: 0, branch: 'main' },
+                        { id: 'f3f3', x: 1, y: 1, branch: 'feat' }
+                    ];
+                    gitState.branches = { main: 'r2r2', feature: 'f3f3' };
+                    gitState.head = 'main'; gitState.detached = false;
+                    gitState.workingStatus = "Unstaged Changes"; // has uncommitted work
+                    gitState.danger = 60;
+                },
+                steps: [
+                    {
+                        cmd: /^git\s+stash$/, hint: "Type 'git stash' to save your uncommitted work first.",
+                        action: () => { gitState.stash.push("WIP on main"); gitState.workingStatus = "Clean"; log("Stashed working directory changes."); }
+                    },
+                    {
+                        cmd: /^git\s+merge\s+feature$/, hint: "Type 'git merge feature' to trigger the conflict.",
+                        action: () => {
+                            gitState.hasConflict = true; gitState.danger = 100;
+                            gitState.workingStatus = "unmerged";
+                            editor.setValue(conflictCode);
+                            document.getElementById('editor-wrapper').classList.add('active');
+                            document.body.classList.add('danger-mode');
+                            playSound('danger');
+                            log("[WARNING] CONFLICT during merge! Resolve it in the editor.");
+                        }
+                    },
+                    {
+                        cmd: /^git\s+add\s+(\.|src\/main\.js)$/, hint: "Fix the conflict markers in the editor, then type 'git add .'",
+                        action: () => {
+                            const code = editor.getValue();
+                            if (code.includes("<<<<<<<") || code.includes("=======") || code.includes(">>>>>>>")) {
+                                log("[ERROR] Conflict markers still present!"); return false;
+                            }
+                            gitState.workingStatus = "Staged Changes"; gitState.hasConflict = false;
+                            log("Conflict resolved and staged."); return true;
+                        }
+                    },
+                    {
+                        cmd: /^git\s+commit$/, hint: "Type 'git commit' to finalize the merge.",
+                        action: () => {
+                            gitState.commits.push({ id: 'mg01', x: 2, y: 0, branch: 'main', parents: ['r2r2', 'f3f3'] });
+                            gitState.branches.main = 'mg01'; gitState.workingStatus = "Clean";
+                            gitState.danger = 30;
+                            document.getElementById('editor-wrapper').classList.remove('active');
+                            document.body.classList.remove('danger-mode');
+                            log("Merge commit created.");
+                        }
+                    },
+                    {
+                        cmd: /^git\s+stash\s+pop$/, hint: "Type 'git stash pop' to restore your saved work.",
+                        action: () => {
+                            gitState.stash.pop(); gitState.workingStatus = "Unstaged Changes";
+                            gitState.danger = 0;
+                            log("[SUCCESS] Disaster recovery complete! Stashed work restored, conflict resolved, history intact.");
+                        }
+                    }
+                ]
+            }
+        ];
+
+        // --- GRAPHICS (CANVAS) ---
+        const canvas = document.getElementById('git-graph');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-wrapper');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawGraph();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const startX = 50, gapX = 80, startY = canvas.height / 2 - 20, gapY = 60;
+
+            // Draw Edges
+            ctx.lineWidth = 3;
+            gitState.commits.forEach((c, idx) => {
+                const px = startX + c.x * gapX;
+                const py = startY + (c.y || 0) * gapY;
+
+                // Find parent to draw line
+                if (c.parents) {
+                    c.parents.forEach(pid => {
+                        const p = gitState.commits.find(x => x.id === pid);
+                        if (p) drawLine(startX + p.x * gapX, startY + (p.y || 0) * gapY, px, py, c.y === 1 ? '#ff00ff' : '#00ffff');
+                    });
+                } else if (idx > 0 && gitState.commits[idx - 1]) {
+                    const p = gitState.commits[idx - 1];
+                    drawLine(startX + p.x * gapX, startY + (p.y || 0) * gapY, px, py, c.y === 1 ? '#ff00ff' : '#00ffff');
+                }
+            });
+
+            // Draw Nodes
+            gitState.commits.forEach(c => {
+                const px = startX + c.x * gapX;
+                const py = startY + (c.y || 0) * gapY;
+                const color = c.y === 1 ? '#ff00ff' : '#00ffff';
+
+                ctx.beginPath(); ctx.arc(px, py, 14, 0, Math.PI * 2);
+                ctx.fillStyle = '#050a05'; ctx.fill();
+                ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.stroke();
+
+                ctx.fillStyle = '#aaa'; ctx.font = '11px Courier New';
+                ctx.fillText(c.id, px - 14, py + 28);
+            });
+
+            // Draw Branches / HEAD
+            Object.keys(gitState.branches).forEach(bName => {
+                const cid = gitState.branches[bName];
+                const c = gitState.commits.find(x => x.id === cid);
+                if (c) {
+                    const px = startX + c.x * gapX; const py = startY + (c.y || 0) * gapY;
+                    const isHead = !gitState.detached && gitState.head === bName;
+                    const bColor = bName === 'feature' ? '#ff00ff' : '#00ffff';
+
+                    // Branch Box
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(px - 20, py - 35, 50, 16);
+                    ctx.strokeStyle = bColor; ctx.lineWidth = 1; ctx.strokeRect(px - 20, py - 35, 50, 16);
+                    ctx.fillStyle = bColor; ctx.font = '12px Courier New'; ctx.fillText(bName, px - 15, py - 23);
+
+                    if (isHead) {
+                        ctx.fillStyle = '#ffff00'; ctx.fillRect(px - 20, py - 55, 40, 14);
+                        ctx.fillStyle = '#000'; ctx.fillText('HEAD', px - 15, py - 44);
+                        ctx.beginPath(); ctx.moveTo(px, py - 39); ctx.lineTo(px, py - 35); ctx.strokeStyle = 'yellow'; ctx.stroke();
+                    }
+                }
+            });
+
+            // Detached HEAD marker
+            if (gitState.detached) {
+                const c = gitState.commits.find(x => x.id === gitState.head);
+                if (c) {
+                    const px = startX + c.x * gapX; const py = startY + (c.y || 0) * gapY;
+                    ctx.fillStyle = '#ff5555'; ctx.fillRect(px - 20, py - 35, 40, 14);
+                    ctx.fillStyle = '#fff'; ctx.fillText('HEAD', px - 15, py - 24);
+                }
+            }
+        }
+
+        function drawLine(x1, y1, x2, y2, color) {
+            ctx.beginPath(); ctx.moveTo(x1, y1);
+            if (y1 !== y2) { ctx.bezierCurveTo(x1 + 40, y1, x2 - 40, y2, x2, y2); }
+            else { ctx.lineTo(x2, y2); }
+            ctx.strokeStyle = color; ctx.stroke();
+        }
+
+        // --- CORE LOGIC ---
+        function addToReflog(hash, action) {
+            gitState.reflog.unshift({ hash, action });
+            if (gitState.reflog.length > 5) gitState.reflog.pop();
+        }
+
+        function log(msg) {
+            const lb = document.getElementById('ui-logs');
+            lb.innerHTML += `<div>${msg}</div>`;
+            lb.scrollTop = lb.scrollHeight;
+        }
+
+        function printToTerminal(text, type = 'normal') {
+            const term = document.getElementById('terminal-output');
+            const div = document.createElement('div');
+            if (type === 'cmd') div.innerHTML = `<span class="prompt">slayer@dojo:~/repo$</span> ${text}`;
+            else if (type === 'error') { div.innerHTML = text; div.style.color = 'var(--danger-color)'; }
+            else { div.innerHTML = text; div.style.color = "#aaaaaa"; }
+            term.appendChild(div); term.scrollTop = term.scrollHeight;
+        }
+
+        function updateUI() {
+            const lvl = levels[gameState.level];
+            document.getElementById('mission-title').innerHTML = `Level ${gameState.level + 1}: ${lvl.title}`;
+            document.getElementById('mission-desc').innerHTML = lvl.desc;
+            document.getElementById('ui-progress').style.width = `${(gameState.level / levels.length) * 100}%`;
+            document.getElementById('ui-xp').innerText = gameState.xp;
+            document.getElementById('ui-danger').style.width = `${gitState.danger}%`;
+
+            document.getElementById('ui-head').innerText = gitState.detached ? `detached at ${gitState.head}` : gitState.head;
+            document.getElementById('ui-working').innerText = gitState.workingStatus;
+
+            let statusColor = '#aaa';
+            if (gitState.workingStatus.includes('unmerged') || gitState.workingStatus.includes('CONFLICT')) statusColor = 'var(--danger-color)';
+            else if (gitState.workingStatus !== 'Clean') statusColor = 'var(--warning-color)';
+            document.getElementById('ui-working').style.color = statusColor;
+
+            const rl = document.getElementById('ui-reflog'); rl.innerHTML = '';
+            gitState.reflog.forEach(r => {
+                rl.innerHTML += `<li><span class="reflog-hash">${r.hash}</span> HEAD@{...}: <span class="reflog-action">${r.action}</span></li>`;
+            });
+
+            const st = document.getElementById('ui-stash'); st.innerHTML = '';
+            if (gitState.stash.length === 0) st.innerHTML = '<li style="color:#555">No stash entries</li>';
+            gitState.stash.forEach((s, i) => { st.innerHTML += `<li>stash@{${i}}: ${s}</li>`; });
+
+            // Re-render Graph
+            setTimeout(drawGraph, 50);
+        }
+
+        function setupLevel(lvlIdx) {
+            document.getElementById('ui-logs').innerHTML = '';
+            gitState.reflog = []; gitState.stash = []; gitState.danger = 0;
+            gitState.workingStatus = "Clean"; gitState.hasConflict = false;
+            document.getElementById('editor-wrapper').classList.remove('active');
+            document.body.classList.remove('danger-mode');
+
+            levels[lvlIdx].setup();
+
+            // Add initial reflog entries based on setup
+            if (gitState.commits.length > 0) {
+                const latest = gitState.commits[gitState.commits.length - 1].id;
+                addToReflog(latest, 'commit: initial state');
+            }
+
+            updateUI();
+        }
+
+        function handleCommand(cmd) {
+            const trimmed = cmd.trim();
+            if (!trimmed) return;
+            printToTerminal(trimmed, 'cmd');
+            if (trimmed === "clear") { document.getElementById('terminal-output').innerHTML = ""; return; }
+            if (trimmed === "git reflog" || trimmed === "git reflog show") {
+                if (gitState.reflog.length === 0) { printToTerminal("(empty reflog)"); }
+                else { gitState.reflog.forEach((r, i) => printToTerminal(`${r.hash} HEAD@{${i}}: ${r.action}`)); }
+                return;
+            }
+
+            const lvl = levels[gameState.level];
+            const currentStep = lvl.steps[gameState.step];
+
+            if (currentStep.cmd.test(trimmed)) {
+                const res = currentStep.action();
+                if (res === false) return; // Blocked logic (e.g. markers still in file)
+
+                playSound('type');
+                if (!gitState.detached && gitState.branches[gitState.head]) {
+                    addToReflog(gitState.branches[gitState.head], trimmed);
+                } else {
+                    addToReflog(gitState.head, trimmed);
+                }
+
+                updateUI();
+                gameState.step++;
+                localStorage.setItem('gitSimPhase4', JSON.stringify(gameState));
+
+                if (gameState.step >= lvl.steps.length) {
+                    setTimeout(() => completeLevel(lvl), 800);
+                }
+            } else {
+                playSound('danger');
+                printToTerminal("Command not recognized or incorrect for current objective.", "error");
+                document.getElementById('terminal-input').parentElement.classList.add('animate__animated', 'animate__headShake');
+                setTimeout(() => document.getElementById('terminal-input').parentElement.classList.remove('animate__headShake'), 500);
+            }
+        }
+
+        function completeLevel(lvl) {
+            gameState.xp += 150;
+            playSound('success');
+            Swal.fire({
+                title: 'Objective Clear!',
+                text: `You mastered: ${lvl.title}`,
+                icon: 'success',
+                background: '#111', color: '#0f0', confirmButtonColor: '#008800'
+            }).then(() => {
+                gameState.level++; gameState.step = 0;
+                localStorage.setItem('gitSimPhase4', JSON.stringify(gameState));
+
+                if (gameState.level >= levels.length) {
+                    Swal.fire({
+                        title: 'Phase 4 Complete! 🎉',
+                        html: 'You are a true Conflict Slayer!<br><br><b>Final Phase:</b> Simulate a real open-source contribution workflow in Phase 5 — forks, PRs, code reviews, and more!',
+                        icon: 'success',
+                        background: '#111', color: '#0f0',
+                        showCancelButton: true,
+                        confirmButtonColor: '#008800',
+                        cancelButtonColor: '#333',
+                        confirmButtonText: 'Continue to Phase 5 →',
+                        cancelButtonText: 'Stay Here'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'Phase 5.html';
+                        }
+                    });
+                    gameState.level = levels.length - 1; // Cap
+                } else {
+                    setupLevel(gameState.level);
+                    printToTerminal(`\n--- MISSION ${gameState.level + 1} ENGAGED ---`);
+                }
+            });
+        }
+
+        function initGame() {
+            const saved = localStorage.getItem('gitSimPhase4');
+            if (saved) {
+                const p = JSON.parse(saved);
+                gameState.level = p.level; gameState.xp = p.xp; gameState.step = p.step || 0;
+            }
+            if (gameState.level >= levels.length) gameState.level = levels.length - 1;
+
+            document.getElementById('editor-wrapper').classList.remove('active'); // ensure hidden via CSS class, not inline style
+            resizeCanvas();
+            setupLevel(gameState.level);
+        }
+
+        function showHint() {
+            Swal.fire({ title: 'Dojo Hint', text: levels[gameState.level].steps[gameState.step].hint, icon: 'info', background: '#111', color: '#0f0', confirmButtonColor: '#008800' });
+        }
+
+        function resetProgress() {
+            Swal.fire({ title: 'Wipe Memory?', text: "Reset Phase 4 progress?", icon: 'warning', showCancelButton: true, background: '#111', color: '#0f0', confirmButtonColor: '#880000', confirmButtonText: 'Reset' })
+                .then((res) => {
+                    if (res.isConfirmed) {
+                        localStorage.removeItem('gitSimPhase4');
+                        gameState = { level: 0, step: 0, xp: 0 };
+                        document.getElementById('terminal-output').innerHTML = "[SYSTEM] Simulator Reset.\n";
+                        initGame();
+                    }
+                });
+        }
+
+        // Events
+        document.getElementById('terminal-input').addEventListener('keydown', function (e) {
+            playSound('type');
+            if (e.key === 'Enter') {
+                const cmd = this.value; this.value = ''; handleCommand(cmd);
+            }
+        });
+
+        // Editor refresh on display
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.target.classList.contains('active')) setTimeout(() => editor.refresh(), 50);
+            });
+        });
+        observer.observe(document.getElementById('editor-wrapper'), { attributes: true });
+
+        window.onload = initGame;
+    </script>
+</body>
+
+</html>

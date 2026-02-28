@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Simulator - Phase 3: Remote Warrior</title>
+
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        :root {
+            --bg-color: #030a05;
+            --panel-bg: #071207;
+            --text-color: #00ff00;
+            --border-color: #008800;
+            --highlight: #33ff33;
+            --remote-color: #00ffff;
+            --warning-color: #ffaa00;
+            --error-color: #ff3333;
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom Scrollbars & Resizer (Freedom Cursor) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--highlight);
+        }
+
+        ::-webkit-resizer {
+            background-color: var(--highlight);
+            border: 2px solid var(--panel-bg);
+            border-radius: 50%;
+            cursor: nwse-resize;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 8px var(--text-color);
+        }
+
+        .progress-bar-container {
+            width: 30%;
+            background: #003300;
+            border: 1px solid var(--border-color);
+            height: 15px;
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--text-color);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px var(--text-color);
+        }
+
+        .layout-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex: 1;
+            min-height: 0;
+            align-content: flex-start;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+            position: relative;
+            resize: both;
+        }
+
+        .panel h2 {
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            color: var(--highlight);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            flex: 1 1 280px;
+            min-height: 300px;
+        }
+
+        .mission-box {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px dashed var(--border-color);
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-row {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .info-label {
+            color: #888;
+            display: block;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-weight: bold;
+            color: var(--remote-color);
+        }
+
+        /* Main Workspace (Canvas) */
+        .workspace {
+            flex: 3 1 400px;
+            min-height: 300px;
+            display: flex;
+            background: #010301;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Terminal */
+        .terminal-panel {
+            flex: 1 1 100%;
+            min-height: 200px;
+            cursor: text;
+        }
+
+        #terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: var(--highlight);
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        #terminal-input {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            flex: 1;
+            outline: none;
+        }
+
+        .btn {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 10px var(--text-color);
+        }
+
+        .btn-danger {
+            border-color: #880000;
+            color: var(--error-color);
+        }
+
+        .btn-danger:hover {
+            background: var(--error-color);
+            color: white;
+            box-shadow: 0 0 10px var(--error-color);
+        }
+
+        @media (max-width: 900px) {
+            .layout-container {
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            .workspace {
+                min-height: 300px;
+            }
+
+            .terminal-panel {
+                min-height: 250px;
+            }
+
+            .phase-nav {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Phase Navigation Bar */
+        .phase-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        .phase-nav a,
+        .phase-nav .phase-current {
+            padding: 6px 14px;
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            color: #555;
+        }
+
+        .phase-nav a:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: var(--text-color);
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+        }
+
+        .phase-nav .phase-current {
+            background: var(--text-color);
+            color: var(--bg-color);
+            font-weight: bold;
+            box-shadow: 0 0 12px var(--text-color);
+        }
+
+        .phase-nav .phase-connector {
+            color: var(--border-color);
+            font-size: 1.1rem;
+            padding: 0 4px;
+            border: none;
+        }
+
+        .phase-nav a.phase-completed {
+            color: var(--text-color);
+            border-color: var(--text-color);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Phase Navigation -->
+    <nav class="phase-nav animate__animated animate__fadeInDown">
+        <a href="Git&Github-home.html" class="phase-completed">🏠 Home</a>
+        <span class="phase-connector">|</span>
+        <a href="Phase 1.html" class="phase-completed">← Phase 1: Terminal</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 2.html" class="phase-completed">Phase 2: Branching</a>
+        <span class="phase-connector">→</span>
+        <span class="phase-current">Phase 3: Remote</span>
+        <span class="phase-connector">→</span>
+        <a href="Phase 4.html">Phase 4: Conflicts</a>
+        <span class="phase-connector">→</span>
+        <a href="Phase 5.html">Phase 5: Open Source</a>
+        <span class="phase-connector">|</span>
+        <a href="#lms" class="phase-completed">📺 LMS Help</a>
+    </nav>
+
+    <header class="animate__animated animate__fadeInDown">
+        <h1>Git Dojo: Phase 3 - Remote Warrior</h1>
+        <div style="font-size: 1.2rem;">XP: <span id="ui-xp">0</span></div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="ui-progress"></div>
+        </div>
+    </header>
+
+    <div class="layout-container animate__animated animate__fadeIn">
+
+        <!-- Sidebar -->
+        <div class="panel sidebar">
+            <h2>Current Mission</h2>
+            <div class="mission-box">
+                <h3 id="mission-title" style="margin-bottom: 8px;">Level Title</h3>
+                <div id="mission-desc" style="font-size: 0.9rem; line-height: 1.4;">Description</div>
+            </div>
+
+            <h2>Repository Status</h2>
+            <div class="info-row">
+                <span class="info-label">Remote URL (origin)</span>
+                <span class="info-value" id="ui-remote-url">None</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Current Branch</span>
+                <span class="info-value" id="ui-branch" style="color: var(--text-color);">main</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Sync Status</span>
+                <span class="info-value" id="ui-sync" style="color: var(--warning-color);">Local Only</span>
+            </div>
+
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 5px;">
+                <button class="btn" onclick="showHint()">Get Hint</button>
+                <button class="btn btn-danger" onclick="resetProgress()">Reset Simulator</button>
+            </div>
+        </div>
+
+        <!-- Canvas Workspace -->
+        <div class="panel workspace" id="canvas-container">
+            <canvas id="git-graph"></canvas>
+        </div>
+
+        <!-- Terminal -->
+        <div class="panel terminal-panel" onclick="document.getElementById('terminal-input').focus()">
+            <h2 style="margin-bottom: 5px; border: none;">Terminal</h2>
+            <div id="terminal-output">
+                <div>[SYSTEM] Remote Simulation Environment Initialized.</div>
+                <div>[SYSTEM] Establishing connection to local visualizer... OK.</div><br>
+            </div>
+            <div class="input-line">
+                <span class="prompt">warrior@dojo:~/repo$</span>
+                <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // --- AUDIO ENGINE ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'type') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300 + Math.random() * 50, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.03);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.03);
+            } else if (type === 'push') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'pull') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        // --- GAME STATE & LEVELS ---
+        let gameState = { level: 0, xp: 0 };
+
+        let gitState = {
+            remoteUrl: null,
+            localCommits: [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }],
+            remoteCommits: [],
+            localHead: 'd3f4',
+            remoteHead: null,
+            originMain: null, // Tracking pointer
+            currentBranch: 'main'
+        };
+
+        const levels = [
+            {
+                title: "Add Remote Origin",
+                desc: "Your local repo needs to know where the server is.<br><br><b>Goal:</b> Add a remote named <code>origin</code> pointing to <code>https://github.com/user/repo.git</code>",
+                cmdRegex: /^git\s+remote\s+add\s+origin\s+https:\/\/github\.com\/user\/repo\.git$/,
+                xp: 50, hint: "Command: git remote add origin https://github.com/user/repo.git",
+                postMsg: "<b>Success!</b> The alias 'origin' now maps to the server URL. A remote is just a named reference to a URL where your repo is hosted."
+            },
+            {
+                title: "First Push",
+                desc: "Send your local commits to the remote server to share them.<br><br><b>Goal:</b> Push the <code>main</code> branch to <code>origin</code>.",
+                cmdRegex: /^git\s+push\s+(-u\s+)?origin\s+main$/,
+                xp: 100, hint: "Command: git push origin main",
+                postMsg: "<b>Data Transferred!</b> Notice how the remote graph now mirrors your local graph. The tracking branch 'origin/main' is also created locally to remember where the server's main branch was when you last synced."
+            },
+            {
+                title: "Teammate Pushes Changes",
+                desc: "While you were away, a teammate pushed a new commit to the server. Your local repo doesn't know about it yet. Look at the graph — the remote is ahead!<br><br><b>Goal:</b> Check remote branches by typing <code>git branch -r</code>.",
+                cmdRegex: /^git\s+branch\s+-r$/,
+                xp: 50, hint: "Command: git branch -r",
+                postMsg: "<b>Remote Branches Visible!</b> 'git branch -r' lists the remote tracking branches your local repo knows about. But notice — the info may be stale. You'll need to fetch to get the latest."
+            },
+            {
+                title: "Pull Remote Changes",
+                desc: "Your teammate's work is on the server. Sync your local branch with the remote.<br><br><b>Goal:</b> Pull changes from origin main.",
+                cmdRegex: /^git\s+pull\s+origin\s+main$/,
+                xp: 100, hint: "Command: git pull origin main",
+                postMsg: "<b>Synced!</b> Pulling is essentially a 'fetch' followed by a 'merge'. Your local HEAD now matches the server. <br><br><b>fetch vs pull:</b> 'git fetch' downloads data but does NOT change your working files. 'git pull' downloads AND merges. Fetch is safer when you want to inspect changes before integrating."
+            },
+            {
+                title: "Fetch Without Merge",
+                desc: "Another teammate pushed changes. This time, download the updates WITHOUT merging them into your working files.<br><br><b>Goal:</b> Use <code>git fetch origin</code> to download only.",
+                cmdRegex: /^git\s+fetch\s+origin$/,
+                xp: 50, hint: "Command: git fetch origin",
+                postMsg: "<b>Fetched!</b> Fetching downloads remote data but DOES NOT merge it into your working files. Notice 'origin/main' moved forward, but local 'main' stayed behind. You can inspect the differences before deciding to merge."
+            },
+            {
+                title: "Fix Push Rejection",
+                desc: "You made a local commit, but someone else ALSO pushed a commit to the server. You are out of sync.<br><br><b>Goal:</b> Try to push. When it fails, pull the changes, then push again.",
+                cmdRegex: /^git\s+push\s+origin\s+main$/, // Requires state logic in handler
+                xp: 150, hint: "1. git push origin main (fails)\n2. git pull origin main\n3. git push origin main",
+                postMsg: "<b>Conflict Resolved!</b> You cannot push if the remote is ahead. You must pull, merge the histories, and then push the combined result. This is a fundamental collaboration pattern."
+            },
+            {
+                title: "Pull Request Simulation",
+                desc: "Create a feature branch, push it, and open a simulated PR.<br><br><b>Goal:</b><br>1. <code>git checkout -b feature</code><br>2. <code>git commit -m \"feat\"</code><br>3. <code>git push --set-upstream origin feature</code>",
+                cmdRegex: /^git\s+push\s+(-u|--set-upstream)\s+origin\s+feature$/,
+                xp: 200, hint: "Follow the 3 steps in the description exactly.",
+                postMsg: "<b>PR Created!</b> In a real workflow, your team would review this branch on GitHub before merging it into main. PRs are the standard way to propose changes in collaborative development."
+            },
+            {
+                title: "Fork and Clone Simulation",
+                desc: "You found a project you want to contribute to. First, simulate forking the repo, then clone your fork locally.<br><br><b>Goal:</b> Type <code>git clone https://github.com/user/repo.git</code> to clone your fork.",
+                cmdRegex: /^git\s+clone\s+https:\/\/github\.com\/user\/repo\.git$/,
+                xp: 200, hint: "Command: git clone https://github.com/user/repo.git",
+                postMsg: "<b>Fork & Clone Complete!</b> Forking creates your own copy of a repo on the server. Cloning downloads that fork to your local machine. You can now push to your fork freely and create PRs to the original project."
+            }
+        ];
+
+        // --- GRAPHICS (CANVAS) ---
+        const canvas = document.getElementById('git-graph');
+        const ctx = canvas.getContext('2d');
+        let animOffset = 0;
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawGraphs();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawGraphs() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width;
+            const h = canvas.height;
+            const midX = w / 2;
+
+            // Draw Divider
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(midX, 0);
+            ctx.lineTo(midX, h);
+            ctx.strokeStyle = '#005500';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Titles
+            ctx.font = '16px Courier New';
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+            ctx.fillText("LOCAL WORKSTATION", 20, 25);
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+            ctx.fillText("REMOTE SERVER (origin)", midX + 20, 25);
+
+            const startY = 80;
+            const gapY = 60;
+
+            // Function to draw a vertical commit line
+            function drawBranch(commits, xPos, color) {
+                if (commits.length === 0) return;
+                ctx.beginPath();
+                ctx.moveTo(xPos, startY + commits[0].yPos * gapY);
+                ctx.lineTo(xPos, startY + commits[commits.length - 1].yPos * gapY);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                commits.forEach((c) => {
+                    let cx = xPos;
+                    if (c.branch === 'feature') cx += 40; // Indent feature branch
+
+                    // If it's a feature commit, draw line from parent
+                    if (c.branch === 'feature' && c.yPos > 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(xPos, startY + (c.yPos - 1) * gapY);
+                        ctx.lineTo(cx, startY + c.yPos * gapY);
+                        ctx.strokeStyle = '#ff00ff';
+                        ctx.stroke();
+                    }
+
+                    // Node
+                    ctx.beginPath();
+                    ctx.arc(cx, startY + c.yPos * gapY, 12, 0, Math.PI * 2);
+                    ctx.fillStyle = '#050a05';
+                    ctx.fill();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = c.branch === 'feature' ? '#ff00ff' : color;
+                    ctx.stroke();
+
+                    // Hash
+                    ctx.fillStyle = '#aaa';
+                    ctx.font = '10px Courier New';
+                    ctx.fillText(c.id, cx + 18, startY + c.yPos * gapY + 4);
+                });
+            }
+
+            // Draw Local
+            drawBranch(gitState.localCommits, midX - 100, '#00ff00');
+            // Draw Remote
+            drawBranch(gitState.remoteCommits, midX + 100, '#00ffff');
+
+            // Draw Pointers (Labels)
+            function drawPointer(text, x, y, color, side) {
+                ctx.fillStyle = color;
+                ctx.fillRect(side === 'left' ? x - 70 : x + 15, y - 10, 50, 20);
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 10px Courier New';
+                ctx.fillText(text, side === 'left' ? x - 65 : x + 20, y + 3);
+                // Line
+                ctx.beginPath();
+                ctx.moveTo(side === 'left' ? x - 20 : x + 15, y);
+                ctx.lineTo(side === 'left' ? x - 12 : x + 12, y);
+                ctx.strokeStyle = color;
+                ctx.stroke();
+            }
+
+            // Local main & HEAD
+            if (gitState.localCommits.length > 0) {
+                const headCommit = gitState.localCommits.find(c => c.id === gitState.localHead) || gitState.localCommits[gitState.localCommits.length - 1];
+                let cx = headCommit.branch === 'feature' ? midX - 60 : midX - 100;
+                drawPointer(gitState.currentBranch, cx, startY + headCommit.yPos * gapY, '#00ff00', 'left');
+            }
+
+            // origin/main (tracking pointer on local side)
+            if (gitState.originMain) {
+                const trkCommit = gitState.localCommits.find(c => c.id === gitState.originMain);
+                if (trkCommit) {
+                    drawPointer('o/main', midX - 100, startY + trkCommit.yPos * gapY - 20, '#ffaa00', 'left');
+                }
+            }
+
+            // Remote main
+            if (gitState.remoteCommits.length > 0 && gitState.remoteHead) {
+                const rmCommit = gitState.remoteCommits.find(c => c.id === gitState.remoteHead);
+                if (rmCommit) {
+                    drawPointer('main', midX + 100, startY + rmCommit.yPos * gapY, '#00ffff', 'right');
+                }
+            }
+        }
+
+        // --- GAME LOGIC ---
+        function setupLevel(lvlIdx) {
+            // Reset base git state
+            gitState.remoteUrl = null;
+            gitState.localCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }];
+            gitState.remoteCommits = [];
+            gitState.localHead = 'd3f4';
+            gitState.remoteHead = null;
+            gitState.originMain = null;
+            gitState.currentBranch = 'main';
+
+            // Reset multi-step state
+            level5PushAttempted = false;
+            level6Steps = { checkout: false, commit: false, pushed: false };
+
+            if (lvlIdx >= 1) { // Level 2+: URL exists
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+            }
+            if (lvlIdx >= 2) { // Level 3+: Synced
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+                gitState.remoteCommits = JSON.parse(JSON.stringify(gitState.localCommits));
+                gitState.remoteHead = 'd3f4';
+                gitState.originMain = 'd3f4';
+
+                if (lvlIdx === 2) { // Teammate pushes — remote ahead
+                    gitState.remoteCommits.push({ id: 'e5g6', yPos: 2, branch: 'main' });
+                    gitState.remoteHead = 'e5g6';
+                }
+            }
+            if (lvlIdx === 3) { // Level 4: Pull after teammate push
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+                gitState.remoteCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }, { id: 'e5g6', yPos: 2, branch: 'main' }];
+                gitState.remoteHead = 'e5g6';
+                gitState.originMain = 'd3f4';
+                gitState.localHead = 'd3f4'; // still behind
+            }
+            if (lvlIdx === 4) { // Level 5: Fetch Without Merge
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+                gitState.remoteCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }, { id: 'e5g6', yPos: 2, branch: 'main' }, { id: 'h7j8', yPos: 3, branch: 'main' }];
+                gitState.remoteHead = 'h7j8';
+                // Local is synced to e5g6
+                gitState.localCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }, { id: 'e5g6', yPos: 2, branch: 'main' }];
+                gitState.localHead = 'e5g6';
+                gitState.originMain = 'e5g6';
+            }
+            if (lvlIdx === 5) { // Level 6: Push rejection scenario
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+                // Common ancestor: d3f4
+
+                // Remote has 'x9y0'
+                gitState.remoteCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }, { id: 'x9y0', yPos: 2, branch: 'main' }];
+                gitState.remoteHead = 'x9y0';
+
+                // Local has 'a1b2'
+                gitState.localCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }, { id: 'a1b2', yPos: 2, branch: 'main' }];
+                gitState.localHead = 'a1b2';
+                gitState.originMain = 'd3f4'; // local tracking is behind
+            }
+            if (lvlIdx === 6) { // Level 7: PR simulation
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+                gitState.localCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }];
+                gitState.remoteCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }];
+                gitState.remoteHead = 'd3f4';
+                gitState.localHead = 'd3f4';
+                gitState.originMain = 'd3f4';
+            }
+            if (lvlIdx === 7) { // Level 8: Fork & Clone
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+                gitState.remoteCommits = [{ id: 'c1a2', yPos: 0, branch: 'main' }, { id: 'd3f4', yPos: 1, branch: 'main' }, { id: 'k3l4', yPos: 2, branch: 'main' }];
+                gitState.remoteHead = 'k3l4';
+                // Local is empty — user will clone
+                gitState.localCommits = [];
+                gitState.localHead = null;
+                gitState.originMain = null;
+            }
+
+            drawGraphs();
+            updateUI();
+        }
+
+        function initGame() {
+            const savedState = localStorage.getItem('gitSimPhase3');
+            if (savedState) gameState = JSON.parse(savedState);
+            if (gameState.level >= levels.length) gameState.level = levels.length - 1;
+
+            resizeCanvas();
+            setupLevel(gameState.level);
+            updateUI();
+        }
+
+        function updateUI() {
+            const lvl = levels[gameState.level];
+            document.getElementById('mission-title').innerHTML = `Mission ${gameState.level + 1}: ${lvl.title}`;
+            document.getElementById('mission-desc').innerHTML = lvl.desc;
+            document.getElementById('ui-xp').innerText = gameState.xp;
+            document.getElementById('ui-progress').style.width = `${(gameState.level / levels.length) * 100}%`;
+
+            document.getElementById('ui-remote-url').innerText = gitState.remoteUrl || 'None';
+            document.getElementById('ui-branch').innerText = gitState.currentBranch;
+
+            let syncText = 'Local Only';
+            let syncColor = varColor('--warning-color');
+
+            if (gitState.remoteUrl) {
+                if (gitState.localHead === gitState.remoteHead) {
+                    syncText = 'In Sync';
+                    syncColor = '#00ff00';
+                } else if (gitState.localCommits.length > gitState.remoteCommits.length) {
+                    syncText = 'Ahead of origin';
+                    syncColor = '#ffaa00';
+                } else {
+                    syncText = 'Behind origin / Diverged';
+                    syncColor = '#ff3333';
+                }
+            }
+            document.getElementById('ui-sync').innerText = syncText;
+            document.getElementById('ui-sync').style.color = syncColor;
+        }
+
+        function varColor(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function printToTerminal(text, type = 'normal') {
+            const term = document.getElementById('terminal-output');
+            const div = document.createElement('div');
+            if (type === 'cmd') {
+                div.innerHTML = `<span class="prompt">warrior@dojo:~/repo$</span> ${text}`;
+            } else if (type === 'error') {
+                div.innerHTML = text;
+                div.style.color = varColor('--error-color');
+            } else if (type === 'success') {
+                div.innerHTML = text;
+                div.style.color = '#00ff00';
+            } else {
+                div.innerHTML = text;
+                div.style.color = "#aaaaaa";
+            }
+            term.appendChild(div);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        // Complex Multi-step State Tracking for specific levels
+        let level5PushAttempted = false;
+        let level6Steps = { checkout: false, commit: false, pushed: false };
+
+        function handleCommand(cmd) {
+            const trimmedCmd = cmd.trim();
+            if (!trimmedCmd) return;
+            printToTerminal(trimmedCmd, 'cmd');
+
+            if (trimmedCmd === "clear") {
+                document.getElementById('terminal-output').innerHTML = "";
+                return;
+            }
+
+            const lvlIdx = gameState.level;
+            const lvl = levels[lvlIdx];
+            let passed = false;
+
+            // Level 1: Remote add
+            if (lvlIdx === 0 && lvl.cmdRegex.test(trimmedCmd)) {
+                gitState.remoteUrl = "https://github.com/user/repo.git";
+                passed = true;
+            }
+            // Level 2: Push
+            else if (lvlIdx === 1 && lvl.cmdRegex.test(trimmedCmd)) {
+                playSound('push');
+                gitState.remoteCommits = JSON.parse(JSON.stringify(gitState.localCommits));
+                gitState.remoteHead = gitState.localHead;
+                gitState.originMain = gitState.localHead;
+                printToTerminal("Enumerating objects: 6, done.\nWriting objects: 100% (6/6), done.\nTo https://github.com/user/repo.git\n * [new branch]      main -> main", "success");
+                passed = true;
+            }
+            // Level 3: Teammate Pushes — git branch -r
+            else if (lvlIdx === 2 && lvl.cmdRegex.test(trimmedCmd)) {
+                printToTerminal("  origin/main");
+                printToTerminal("[INFO] Your tracking branch shows the last known state of the remote.");
+                passed = true;
+            }
+            // Level 4: Pull
+            else if (lvlIdx === 3 && lvl.cmdRegex.test(trimmedCmd)) {
+                playSound('pull');
+                gitState.localCommits.push({ id: 'e5g6', yPos: 2, branch: 'main' });
+                gitState.localHead = 'e5g6';
+                gitState.originMain = 'e5g6';
+                printToTerminal("Updating d3f4..e5g6\nFast-forward\n 1 file changed, 1 insertion(+)", "success");
+                passed = true;
+            }
+            // Level 5: Fetch Without Merge
+            else if (lvlIdx === 4 && lvl.cmdRegex.test(trimmedCmd)) {
+                playSound('pull');
+                gitState.localCommits.push({ id: 'h7j8', yPos: 3, branch: 'main' });
+                gitState.originMain = 'h7j8';
+                // localHead stays at e5g6 — not merged
+                printToTerminal("From https://github.com/user/repo.git\n   e5g6..h7j8  main     -> origin/main");
+                printToTerminal("[INFO] Data downloaded but NOT merged. Your working files are unchanged.");
+                passed = true;
+            }
+            // Level 6: Fix Push Rejection
+            else if (lvlIdx === 5) {
+                if (/^git\s+push\s+origin\s+main$/.test(trimmedCmd)) {
+                    if (gitState.localHead === 'a1b2' && !level5PushAttempted) {
+                        playSound('error');
+                        printToTerminal("! [rejected]        main -> main (fetch first)\nerror: failed to push some refs\nhint: Updates were rejected because the remote contains work that you do not have locally.", "error");
+                        level5PushAttempted = true;
+                    } else if (level5PushAttempted && gitState.localHead === 'm7m7') {
+                        // After merge
+                        playSound('push');
+                        gitState.remoteCommits = JSON.parse(JSON.stringify(gitState.localCommits));
+                        gitState.remoteHead = 'm7m7';
+                        gitState.originMain = 'm7m7';
+                        printToTerminal("Writing objects: 100% (3/3), done.\nTo https://github.com/user/repo.git\n   x9y0..m7m7  main -> main", "success");
+                        passed = true;
+                    } else {
+                        printToTerminal("Push rejected. Read the hints.", "error");
+                    }
+                } else if (/^git\s+pull\s+origin\s+main$/.test(trimmedCmd) && level5PushAttempted) {
+                    playSound('pull');
+                    // Create merge commit
+                    gitState.localCommits.push({ id: 'x9y0', yPos: 3, branch: 'main' }); // Bring in remote
+                    gitState.localCommits.push({ id: 'm7m7', yPos: 4, branch: 'main' }); // Merge commit
+                    gitState.localHead = 'm7m7';
+                    gitState.originMain = 'x9y0';
+                    printToTerminal("Merge made by the 'ort' strategy.", "success");
+                    printToTerminal("Hint: Now try pushing again.");
+                } else {
+                    printToTerminal("Command not recognized or incorrect sequence.", "error");
+                }
+            }
+            // Level 7: PR Simulation
+            else if (lvlIdx === 6) {
+                if (/^git\s+checkout\s+-b\s+feature$/.test(trimmedCmd)) {
+                    gitState.currentBranch = 'feature';
+                    level6Steps.checkout = true;
+                    printToTerminal("Switched to a new branch 'feature'");
+                } else if (/^git\s+commit\s+-m\s+/.test(trimmedCmd) && level6Steps.checkout) {
+                    gitState.localCommits.push({ id: 'f8h9', yPos: 2, branch: 'feature' });
+                    gitState.localHead = 'f8h9';
+                    level6Steps.commit = true;
+                    printToTerminal("[feature f8h9] commit message", "success");
+                } else if (lvl.cmdRegex.test(trimmedCmd) && level6Steps.commit) {
+                    playSound('push');
+                    gitState.remoteCommits.push({ id: 'f8h9', yPos: 2, branch: 'feature' });
+                    gitState.remoteHead = 'f8h9';
+                    printToTerminal("Branch 'feature' set up to track remote branch 'feature' from 'origin'.\nTo https://github.com/user/repo.git\n * [new branch]      feature -> feature", "success");
+                    passed = true;
+                } else {
+                    printToTerminal("Command out of sequence or incorrect. Check objectives.", "error");
+                }
+            }
+            // Level 8: Fork and Clone
+            else if (lvlIdx === 7 && lvl.cmdRegex.test(trimmedCmd)) {
+                playSound('pull');
+                printToTerminal("Cloning into 'repo'...\nRemote: Enumerating objects: 9, done.\nRemote: Total 9, done.\nReceiving objects: 100% (9/9), done.", "success");
+                gitState.localCommits = JSON.parse(JSON.stringify(gitState.remoteCommits));
+                gitState.localHead = gitState.remoteHead;
+                gitState.originMain = gitState.remoteHead;
+                passed = true;
+            }
+            else {
+                if (!passed) printToTerminal("Command not recognized for current objective.", "error");
+            }
+
+            drawGraphs();
+            updateUI();
+
+            if (passed) {
+                setTimeout(() => levelComplete(lvl), 800);
+            }
+        }
+
+        function levelComplete(lvl) {
+            gameState.xp += lvl.xp;
+
+            Swal.fire({
+                title: 'Objective Complete',
+                html: `<div style="text-align:left;">${lvl.postMsg}</div>`,
+                icon: 'success',
+                background: '#111',
+                color: '#0f0',
+                confirmButtonColor: '#008800'
+            }).then(() => {
+                gameState.level++;
+                localStorage.setItem('gitSimPhase3', JSON.stringify(gameState));
+
+                if (gameState.level >= levels.length) {
+                    Swal.fire({
+                        title: 'Phase 3 Complete! 🎉',
+                        html: 'You are now a Remote Warrior!<br><br><b>Next up:</b> Master conflict resolution, resets, stashes and more in Phase 4.',
+                        icon: 'success',
+                        background: '#111', color: '#0f0',
+                        showCancelButton: true,
+                        confirmButtonColor: '#008800',
+                        cancelButtonColor: '#333',
+                        confirmButtonText: 'Continue to Phase 4 →',
+                        cancelButtonText: 'Stay Here'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'Phase 4.html';
+                        }
+                    });
+                    gameState.level = levels.length - 1;
+                } else {
+                    setupLevel(gameState.level);
+                    printToTerminal(`\n--- MISSION ${gameState.level + 1} STARTED ---`);
+                }
+            });
+        }
+
+        function showHint() {
+            Swal.fire({ title: 'Dojo Hint', text: levels[gameState.level].hint, icon: 'info', background: '#111', color: '#0f0', confirmButtonColor: '#008800' });
+        }
+
+        function resetProgress() {
+            Swal.fire({
+                title: 'Factory Reset?', text: "Erase Phase 3 progress?", icon: 'warning', showCancelButton: true,
+                background: '#111', color: '#0f0', confirmButtonColor: '#880000', confirmButtonText: 'Reset'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    localStorage.removeItem('gitSimPhase3');
+                    gameState = { level: 0, xp: 0 };
+                    level5PushAttempted = false; level6Steps = { checkout: false, commit: false, pushed: false };
+                    document.getElementById('terminal-output').innerHTML = "[SYSTEM] Simulator Reset.\n";
+                    initGame();
+                }
+            });
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('terminal-input').addEventListener('keydown', function (e) {
+            playSound('type');
+            if (e.key === 'Enter') {
+                const cmd = this.value;
+                this.value = '';
+                handleCommand(cmd);
+            }
+        });
+
+        window.onload = initGame;
+    </script>
+</body>
+
+</html>

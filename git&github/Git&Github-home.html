@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git & GitHub Dojo - Interactive Simulator</title>
+
+    <!-- Animate.css for entrance animations -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+    <style>
+        :root {
+            --bg-color: #030805;
+            --panel-bg: #071207;
+            --text-color: #00ff00;
+            --border-color: #008800;
+            --highlight: #33ff33;
+            --accent-blue: #00ffff;
+            --accent-purple: #ff00ff;
+            --accent-gold: #ffaa00;
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom Scrollbars & Resizer (Freedom Cursor) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--highlight);
+        }
+
+        ::-webkit-resizer {
+            background-color: var(--highlight);
+            border: 2px solid var(--panel-bg);
+            border-radius: 50%;
+            cursor: nwse-resize;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* --- Header & Hero --- */
+        header {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(0, 20, 0, 0.8);
+            backdrop-filter: blur(5px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--highlight);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .total-xp {
+            font-size: 1.2rem;
+            color: var(--accent-gold);
+            text-shadow: 0 0 5px var(--accent-gold);
+        }
+
+        .hero {
+            text-align: center;
+            padding: 60px 20px;
+            background: radial-gradient(circle at center, #0a200a 0%, var(--bg-color) 70%);
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 0 0 15px var(--text-color), 0 0 30px var(--border-color);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #aaa;
+            max-width: 600px;
+            margin: 0 auto 30px auto;
+            line-height: 1.6;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 15px;
+            height: 30px;
+            background-color: var(--highlight);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* --- Grid & Cards --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            flex: 1;
+        }
+
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: auto;
+            text-decoration: none;
+            color: inherit;
+            resize: both;
+            flex: 1 1 300px;
+            min-height: 250px;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 255, 0, 0.15);
+            border-color: var(--highlight);
+        }
+
+        .card:hover::before {
+            background: var(--highlight);
+            box-shadow: 0 0 15px var(--highlight);
+        }
+
+        .card-phase {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            flex: 1;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px dashed #333;
+            padding-top: 15px;
+            font-size: 0.85rem;
+        }
+
+        .status {
+            color: #888;
+        }
+
+        .status.completed {
+            color: var(--highlight);
+            font-weight: bold;
+        }
+
+        .xp-badge {
+            background: rgba(255, 170, 0, 0.1);
+            color: var(--accent-gold);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--accent-gold);
+        }
+
+        /* Specific Card Accent Colors */
+        .card:nth-child(1):hover {
+            border-color: var(--highlight);
+        }
+
+        .card:nth-child(2):hover {
+            border-color: var(--accent-blue);
+        }
+
+        .card:nth-child(2):hover::before {
+            background: var(--accent-blue);
+            box-shadow: 0 0 15px var(--accent-blue);
+        }
+
+        .card:nth-child(3):hover {
+            border-color: var(--accent-purple);
+        }
+
+        .card:nth-child(3):hover::before {
+            background: var(--accent-purple);
+            box-shadow: 0 0 15px var(--accent-purple);
+        }
+
+        .card:nth-child(4):hover {
+            border-color: #ff0033;
+        }
+
+        .card:nth-child(4):hover::before {
+            background: #ff0033;
+            box-shadow: 0 0 15px #ff0033;
+        }
+
+        .card:nth-child(5):hover {
+            border-color: var(--accent-gold);
+        }
+
+        .card:nth-child(5):hover::before {
+            background: var(--accent-gold);
+            box-shadow: 0 0 15px var(--accent-gold);
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            border-top: 1px solid #111;
+            color: #555;
+            font-size: 0.9rem;
+            background: #000;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="animate__animated animate__fadeInDown">
+        <div class="logo">
+            <svg height="28" viewBox="0 0 16 16" width="28" fill="var(--highlight)">
+                <path
+                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
+                </path>
+            </svg>
+            The Git Dojo
+        </div>
+        <div class="total-xp">Total XP: <span id="total-xp-display">0</span></div>
+    </header>
+
+    <section class="hero animate__animated animate__fadeIn">
+        <h1>Master Git & GitHub <span class="typing-cursor"></span></h1>
+        <p>Welcome to the ultimate interactive learning simulator. Progress through 5 intensive phases to go from a
+            Terminal Apprentice to an Open Source Legend. Learn safely in a simulated hacker environment without fear of
+            breaking production.</p>
+        <a href="#lms" class="btn animate__animated animate__fadeInUp"
+            style="display:inline-block; padding: 10px 20px; font-size: 1.1rem; color: #000; background: var(--highlight); text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">📺
+            Watch LMS Tutorial</a>
+    </section>
+
+    <main class="container">
+        <div class="grid">
+
+            <!-- Phase 1 -->
+            <a href="Phase 1.html" class="card animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+                <div class="card-phase">Phase 1</div>
+                <div class="card-title">Terminal Apprentice</div>
+                <div class="card-desc">Learn the fundamental mechanics of local Git repositories. Master
+                    <code>init</code>, <code>add</code>, <code>commit</code>, and understand the working tree versus the
+                    staging area.
+                </div>
+                <div class="card-footer">
+                    <span class="status" id="status-1">Not Started</span>
+                    <span class="xp-badge"><span id="xp-1">0</span> XP</span>
+                </div>
+            </a>
+
+            <!-- Phase 2 -->
+            <a href="Phase 2.html" class="card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                <div class="card-phase">Phase 2</div>
+                <div class="card-title">Branch Ninja</div>
+                <div class="card-desc">Dive into branching strategies. Visualize how commits form trees, and learn to
+                    navigate branches, perform fast-forward merges, and execute rebases.</div>
+                <div class="card-footer">
+                    <span class="status" id="status-2">Not Started</span>
+                    <span class="xp-badge"><span id="xp-2">0</span> XP</span>
+                </div>
+            </a>
+
+            <!-- Phase 3 -->
+            <a href="Phase 3.html" class="card animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+                <div class="card-phase">Phase 3</div>
+                <div class="card-title">Remote Warrior</div>
+                <div class="card-desc">Connect to simulated remote servers. Understand how to track upstream branches,
+                    fetch changes, pull data, and handle push rejections.</div>
+                <div class="card-footer">
+                    <span class="status" id="status-3">Not Started</span>
+                    <span class="xp-badge"><span id="xp-3">0</span> XP</span>
+                </div>
+            </a>
+
+            <!-- Phase 4 -->
+            <a href="Phase 4.html" class="card animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
+                <div class="card-phase">Phase 4</div>
+                <div class="card-title">Conflict Slayer</div>
+                <div class="card-desc">Enter the danger zone. Manually resolve code conflicts in the editor. Manipulate
+                    history with <code>reset</code>, <code>revert</code>, <code>stash</code>, and survive detached HEAD
+                    states.</div>
+                <div class="card-footer">
+                    <span class="status" id="status-4">Not Started</span>
+                    <span class="xp-badge"><span id="xp-4">0</span> XP</span>
+                </div>
+            </a>
+
+            <!-- Phase 5 -->
+            <a href="Phase 5.html" class="card animate__animated animate__fadeInUp" style="animation-delay: 0.5s;">
+                <div class="card-phase">Phase 5</div>
+                <div class="card-title">Open Source Legend</div>
+                <div class="card-desc">Simulate a complete GitHub contribution workflow. Fork repositories, create Pull
+                    Requests, address maintainer code-reviews, and earn your certificate.</div>
+                <div class="card-footer">
+                    <span class="status" id="status-5">Not Started</span>
+                    <span class="xp-badge"><span id="xp-5">0</span> XP</span>
+                </div>
+            </a>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>Git Dojo Learning Simulator &copy; 2026. Built entirely with HTML, CSS, and Vanilla JavaScript.</p>
+    </footer>
+
+    <script>
+        // --- PROGRESS TRACKER LOGIC ---
+        // This script reads the LocalStorage keys generated by the individual phases
+        // to display the user's progress dynamically on the homepage.
+
+        document.addEventListener("DOMContentLoaded", () => {
+
+            // Define the storage keys and max levels used in the previous files
+            const phases = [
+                { id: 1, key: 'gitSimulatorState', maxLevel: 5 }, // Phase 1
+                { id: 2, key: 'gitSimPhase2', maxLevel: 7 },      // Phase 2
+                { id: 3, key: 'gitSimPhase3', maxLevel: 6 },      // Phase 3
+                { id: 4, key: 'gitSimPhase4', maxLevel: 8 },      // Phase 4
+                { id: 5, key: 'gitSimPhase5', maxLevel: 10 }      // Phase 5
+            ];
+
+            let totalXP = 0;
+
+            phases.forEach(phase => {
+                const savedData = localStorage.getItem(phase.key);
+                const statusEl = document.getElementById(`status-${phase.id}`);
+                const xpEl = document.getElementById(`xp-${phase.id}`);
+
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+
+                        // Update XP
+                        const xp = parsed.xp || 0;
+                        xpEl.innerText = xp;
+                        totalXP += xp;
+
+                        // Calculate Progress Status
+                        const currentLvl = parsed.level || 0;
+                        if (currentLvl >= phase.maxLevel - 1 && xp > 0) {
+                            // Phase completed
+                            statusEl.innerText = "[ COMPLETED ]";
+                            statusEl.classList.add('completed');
+                        } else if (currentLvl > 0 || xp > 0) {
+                            // In progress
+                            statusEl.innerText = `In Progress (Lvl ${currentLvl + 1})`;
+                            statusEl.style.color = "#00ffff"; // Cyan for active
+                        }
+
+                    } catch (e) {
+                        console.error(`Error parsing local storage for Phase ${phase.id}`);
+                    }
+                }
+            });
+
+            // Update Total XP in Header
+            document.getElementById('total-xp-display').innerText = totalXP;
+        });
+    </script>
+</body>
+
+</html>
